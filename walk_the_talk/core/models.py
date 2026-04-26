@@ -133,7 +133,7 @@ class Claim(BaseModel):
     canonical_key: str
     verification_plan: VerificationPlan = Field(default_factory=VerificationPlan)
     status: ClaimStatus = ClaimStatus.OPEN
-    verifications: list["VerificationRecord"] = Field(default_factory=list)
+    verifications: list[VerificationRecord] = Field(default_factory=list)
 
 
 # ============== Phase 3 输出 ==============

@@ -14,8 +14,8 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable
 
 from ..core.enums import SectionCanonical
 from ..core.ids import text_fingerprint

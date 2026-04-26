@@ -25,8 +25,8 @@ from __future__ import annotations
 import logging
 import re
 import time
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
-from typing import Callable, Iterable
 
 from ..config import VerifySettings
 from ..core.enums import Verdict
@@ -118,11 +118,9 @@ def run_verify(
         financials_store = FinancialsStore(settings.financials_db_path)
         own_financials = True
 
-    own_reports_store = False
     if reports_store is None and settings.chroma_dir.exists():
         try:
             reports_store = _load_reports_store(settings, logger=logger)
-            own_reports_store = reports_store is not None
         except Exception as e:  # noqa: BLE001
             log.warning("加载 ReportsStore 失败（query_chunks 将不可用）：%s", e)
             reports_store = None
@@ -173,9 +171,8 @@ def run_verify(
         already_verified = set(verdict_store.verifications.keys())
 
         # 6. 准备 LLM（agent 路径需要；PREMATURE 短路不需要）
-        own_llm = False
+        # 留 None，等真要进 agent 时再 lazy 构造，避免 PREMATURE-only 跑批白拿 API key。
         agent_llm: LLMClient | None = llm
-        # llm 留 None，等真要进 agent 时再 lazy 构造，避免 PREMATURE-only 跑批白拿 API key
 
         # 7. 逐条处理
         for claim in selected:
@@ -191,7 +188,6 @@ def run_verify(
                 else:
                     if agent_llm is None:
                         agent_llm = _build_default_llm(settings)
-                        own_llm = True
                     record = _verify_with_agent(
                         claim,
                         llm=agent_llm,
@@ -289,29 +285,6 @@ def _build_premature_record(
     )
 
 
-def _verify_one_claim(claim: Claim, *, current_fy: int) -> VerificationRecord:
-    """[DEPRECATED] 仅保留作为 step 1 测试的兼容入口。
-
-    新路径走 _build_premature_record + _verify_with_agent。该函数仍然遵循
-    PREMATURE 短路；其他全部 stub 为 NOT_VERIFIABLE（用于无 LLM 的 skeleton 测试）。
-    """
-    end_year = _parse_fy(claim.horizon.end)
-    if end_year is not None and end_year > current_fy:
-        return _build_premature_record(claim, current_fy=current_fy)
-
-    return VerificationRecord(
-        fiscal_year=current_fy,
-        verdict=Verdict.NOT_VERIFIABLE,
-        target_value=claim.predicate.value,
-        actual_value=None,
-        evidence=[],
-        computation_trace=[],
-        confidence=0.0,
-        comment="[skeleton] verifier agent 尚未实装；待 Phase 3 step 3 接入。",
-        cost={},
-    )
-
-
 # ============== 工具 ==============
 
 
@@ -334,27 +307,10 @@ def _filter_claims(claims: Iterable[Claim], settings: VerifySettings) -> list[Cl
     return out
 
 
-def _detect_current_fiscal_year(settings: VerifySettings) -> int:
-    """从 financials.db 推断当前财年（取该 ticker 出现过的最大 FY）。
-
-    [DEPRECATED] step 1 测试入口；step 3 主路径用 _detect_current_fiscal_year_from_store
-    避免重复打开 store。
-    """
-    if not settings.financials_db_path.exists():
-        raise RuntimeError(
-            f"financials.db 不存在：{settings.financials_db_path}；"
-            f"先跑 walk-the-talk ingest 或用 --current-fy 显式覆盖"
-        )
-    store = FinancialsStore(settings.financials_db_path)
-    try:
-        return _detect_current_fiscal_year_from_store(store, settings.ticker)
-    finally:
-        store.close()
-
-
 def _detect_current_fiscal_year_from_store(
     store: FinancialsStore, ticker: str
 ) -> int:
+    """从已打开的 FinancialsStore 推断当前财年（该 ticker 出现过的最大 FY）。"""
     periods = store.list_periods(ticker)
     years = [y for y in (_parse_fy(p) for p in periods) if y is not None]
     if not years:

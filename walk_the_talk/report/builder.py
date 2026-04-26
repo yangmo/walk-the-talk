@@ -31,7 +31,6 @@ from .scoring import (
     verdict_distribution,
 )
 
-
 # ============== 主合成函数 ==============
 
 
@@ -158,7 +157,7 @@ def run_report(
     fetcher: MetricSeriesFetcher | None = None
     if settings.financials_db_path.exists():
         fetcher = _SqliteMetricFetcher(settings.financials_db_path)
-        log(f"启用 anomaly check (financials.db)")
+        log("启用 anomaly check (financials.db)")
     else:
         log("financials.db 不存在，跳过 anomaly check")
 

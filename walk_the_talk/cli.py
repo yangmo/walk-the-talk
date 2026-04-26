@@ -623,7 +623,7 @@ def report_cmd(
         )
     else:
         console.print(
-            f"[yellow]整体可信度: 无可对照 claim（全为 PREMATURE/NOT_VERIFIABLE）[/]"
+            "[yellow]整体可信度: 无可对照 claim（全为 PREMATURE/NOT_VERIFIABLE）[/]"
         )
     console.print(f"[dim]report.md[/] {settings.report_path}")
 

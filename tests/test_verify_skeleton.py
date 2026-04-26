@@ -43,7 +43,7 @@ from walk_the_talk.ingest.reports_store import ReportsStore
 from walk_the_talk.llm import LLMClient, LLMResponse
 from walk_the_talk.verify.pipeline import (
     VerifyResult,
-    _detect_current_fiscal_year,
+    _detect_current_fiscal_year_from_store,
     _load_reports_store,
     _parse_fy,
     run_verify,
@@ -202,27 +202,43 @@ def test_parse_fy(s, expected) -> None:
     assert _parse_fy(s) == expected
 
 
-# ============== Unit: _detect_current_fiscal_year ==============
+# ============== Unit: _detect_current_fiscal_year_from_store ==============
 
 
-def test_detect_current_fiscal_year_from_db(tmp_path: Path) -> None:
-    _seed_environment(tmp_path, [_make_claim()], periods=[2022, 2023, 2025, 2024])
-    settings = VerifySettings(data_dir=tmp_path, ticker="000001", company="测试公司")
-    assert _detect_current_fiscal_year(settings) == 2025
-
-
-def test_detect_current_fiscal_year_missing_db_raises(tmp_path: Path) -> None:
-    """没 ingest 过 → 友好错误，提示用 --current-fy。"""
-    settings = VerifySettings(data_dir=tmp_path, ticker="000001", company="测试公司")
-    with pytest.raises(RuntimeError, match="financials.db"):
-        _detect_current_fiscal_year(settings)
+def test_detect_current_fiscal_year_from_store_picks_max(tmp_path: Path) -> None:
+    """乱序 ingest 的财年也应取最大值。"""
+    work = _seed_environment(
+        tmp_path, [_make_claim()], periods=[2022, 2023, 2025, 2024]
+    )
+    with FinancialsStore(work / "financials.db") as store:
+        assert _detect_current_fiscal_year_from_store(store, "000001") == 2025
 
 
 def test_detect_current_fiscal_year_wrong_ticker_raises(tmp_path: Path) -> None:
-    _seed_environment(tmp_path, [_make_claim()], periods=[2024])
-    settings = VerifySettings(data_dir=tmp_path, ticker="999999", company="测试公司")
-    with pytest.raises(RuntimeError, match="999999"):
-        _detect_current_fiscal_year(settings)
+    """ticker 在 DB 里没数据 → 友好错误，提示 --current-fy 兜底。"""
+    work = _seed_environment(tmp_path, [_make_claim()], periods=[2024])
+    with FinancialsStore(work / "financials.db") as store:
+        with pytest.raises(RuntimeError, match="999999"):
+            _detect_current_fiscal_year_from_store(store, "999999")
+
+
+def test_run_verify_missing_db_raises(tmp_path: Path) -> None:
+    """没 ingest 过 → run_verify 友好错误，提示先跑 ingest。"""
+    # 直接放一份 claims.json（无 financials.db），让 run_verify 走到检测阶段
+    claim = _make_claim(claim_id="000001-FY2024-001", from_fy=2024, end_fy="FY2025")
+    work = tmp_path / "_walk_the_talk"
+    work.mkdir(parents=True, exist_ok=True)
+    store = ClaimStore(
+        company_name="测试公司",
+        ticker="000001",
+        years_processed=[2024],
+        claims={claim.claim_id: claim},
+    )
+    (work / "claims.json").write_text(store.model_dump_json(indent=2), encoding="utf-8")
+
+    settings = VerifySettings(data_dir=tmp_path, ticker="000001", company="测试公司")
+    with pytest.raises(RuntimeError, match="financials.db"):
+        _run_verify(settings)
 
 
 # ============== Pipeline ==============

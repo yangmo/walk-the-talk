@@ -48,7 +48,7 @@ def pick_failed_highlights(
     pairs: list[tuple[Claim, VerificationRecord]],
     *,
     top_n: int = DEFAULT_TOP_N,
-    anomaly_checker: "AnomalyChecker | None" = None,
+    anomaly_checker: AnomalyChecker | None = None,
 ) -> list[HighlightItem]:
     """挑出 FAILED 高亮。pairs 是 (Claim, latest VerificationRecord) 列表。"""
     failed = [
@@ -124,7 +124,7 @@ class AnomalyChecker:
 
     def __init__(
         self,
-        fetcher: "MetricSeriesFetcher",
+        fetcher: MetricSeriesFetcher,
         ticker: str,
         magnitude_ratio: float = ANOMALY_MAGNITUDE_RATIO,
     ) -> None:

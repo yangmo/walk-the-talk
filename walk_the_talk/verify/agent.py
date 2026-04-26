@@ -1,23 +1,29 @@
 """Phase 3 verifier agent：LangGraph 状态机驱动单条 claim 的验证。
 
-状态机：
+状态机
+------
+::
+
     START → plan → (call_tool | finalize)
     call_tool → (plan | finalize_forced)
-    finalize → END
+    finalize → (plan | END)        # plan 边由 rescue gate 触发（见 verify.rescue）
     finalize_forced → END
 
-设计要点：
-- LLM 解析失败一律走两层兜底：先剥 ```json fences，再 reasoner 模型重试一次。
+设计要点
+--------
+- **LLM 解析两层兜底**：先剥三反引号 ``json`` fences，再 reasoner 模型重试一次；
   仍失败时 plan 默认 finalize、finalize 默认 not_verifiable，agent 永不卡死。
-- ticker 由 agent 注入工具 args（query_financials），LLM 不应自己写 ticker。
-- compute / query_financials / query_chunks 三类工具走 _dispatch_tool 集中调度，
-  抛错或参数缺失统一以 dict 形式塞进 history（"error" 字段）。
-- 缓存命中数计在 LLMResponse.cached 上，agent 只透传给 pipeline。
+- **ticker 由 agent 注入工具 args**（query_financials），LLM 不应自己写 ticker。
+- **三工具集中调度**（``_dispatch_tool``）：compute / query_financials / query_chunks；
+  任何抛错或参数缺失统一以 ``{"error": ...}`` dict 塞进 history。
+- **rescue 机制**（P4 优化）下沉到 :mod:`walk_the_talk.verify.rescue`；agent 只在
+  finalize_node 调 ``gate_finalize`` 决定是直接收尾还是回 plan 重跑一轮。
 
-主入口：
-    run_agent(claim, *, llm, financials_store, reports_store, current_fiscal_year,
-              chat_model, reasoner_model, max_iters, ticker)
-        -> AgentResult(record, history, stats)
+主入口
+------
+:func:`run_agent` —— 接收单条 :class:`~walk_the_talk.core.models.Claim` +
+依赖（LLMClient / FinancialsStore / ChunkSearcher）+ 配置（current_fy /
+max_iters / ticker / available_canonicals），返回 :class:`AgentResult`。
 """
 
 from __future__ import annotations
@@ -26,7 +32,7 @@ import json
 import logging
 import re
 from dataclasses import dataclass, field
-from typing import Any, Callable, TypedDict
+from typing import Any, TypedDict
 
 try:
     from langgraph.graph import END, START, StateGraph
@@ -36,11 +42,11 @@ except ImportError as e:  # pragma: no cover
     ) from e
 
 from ..core.enums import Verdict
-from ..core.models import Evidence, ToolCall, VerificationRecord
-from ..core.models import Claim
-from ..llm import LLMClient
+from ..core.models import Claim, Evidence, ToolCall, VerificationRecord
 from ..ingest.financials_store import FinancialsStore
+from ..llm import LLMClient
 from .prompts import build_finalize_messages, build_plan_messages
+from .rescue import RESCUE_RETRY_MESSAGE, enforce_rescue_ceiling, gate_finalize
 from .tools import (
     ChunkSearcher,
     compute,
@@ -75,16 +81,6 @@ _VALID_VERDICTS = {
 }
 
 _KNOWN_TOOLS = {"compute", "query_financials", "query_chunks"}
-
-# rescue 触发时塞给 plan 节点的引导文本
-_RESCUE_RETRY_MESSAGE = (
-    "上一轮 finalize 判定为 not_verifiable，但你仍有工具调用预算。\n"
-    "在直接收尾前，请先调一次 query_chunks（或 query_financials）变体再试：\n"
-    "  - 把检索词换成同义/近义表述（例：「全线紧缺」→「产能紧张 OR 供不应求」）；\n"
-    "  - 拓宽 fiscal_periods 或调整 after_fiscal_year，看后续年份的解释；\n"
-    "  - 提高 top_k（例：3→5）。\n"
-    "完成新工具调用后再判定。如新证据仍不足，再回到 not_verifiable。"
-)
 
 
 # ============== 出参 ==============
@@ -343,7 +339,7 @@ def _build_graph(
         _accumulate(stats, llm_stats)
 
         # ---- rescue gate（仅非强制 finalize 才有机会触发）----
-        if not forced and _gate_finalize(state, obj) == "retry":
+        if not forced and gate_finalize(state, obj) == "retry":
             log.info(
                 "[rescue] claim=%s verdict=%s iter=%d/%d → 强制再走一轮 plan",
                 claim.claim_id,
@@ -354,7 +350,7 @@ def _build_graph(
             return {
                 "next_action": "plan_retry",
                 "chunk_retry_done": True,
-                "force_retry_message": _RESCUE_RETRY_MESSAGE,
+                "force_retry_message": RESCUE_RETRY_MESSAGE,
                 # 不写 final_record / finalize_obj，让 plan 重新跑
                 "stats": stats,
             }
@@ -368,7 +364,7 @@ def _build_graph(
         )
         # rescue 上限：retried 过的，verified 一律下调为 partially_verified
         if state.get("chunk_retry_done", False):
-            record = _enforce_rescue_ceiling(record)
+            record = enforce_rescue_ceiling(record)
 
         return {
             "final_record": record,
@@ -663,44 +659,6 @@ def _extract_error(result: Any) -> str | None:
         err = result.get("error")
         return str(err) if err else None
     return None
-
-
-def _gate_finalize(state: _State, obj: dict[str, Any]) -> str:
-    """决定 finalize 出来的 obj 是直接收尾还是回到 plan 走 rescue。
-
-    触发 rescue 的全部条件（AND）：
-    - 还没做过 chunk 重试（chunk_retry_done=False）
-    - finalize verdict 是 not_verifiable（最容易因检索 miss 被低估的类别）
-    - 仍有 iter 预算（iter_count < max_iters）
-
-    返回 "retry" 或 "finalize"。
-    """
-    if state.get("chunk_retry_done", False):
-        return "finalize"
-    verdict = str(obj.get("verdict", "")).strip().lower()
-    if verdict != Verdict.NOT_VERIFIABLE.value:
-        return "finalize"
-    if int(state.get("iter_count", 0)) >= int(state.get("max_iters", 0)):
-        return "finalize"
-    return "retry"
-
-
-def _enforce_rescue_ceiling(record: VerificationRecord) -> VerificationRecord:
-    """rescue 上限：被回锅过的 claim 即使 LLM 给了 verified 也只能算 partially_verified。
-
-    设计理由：rescue 路径下 LLM 是被"催"出来的判定，置信度天然受影响；
-    我们宁愿低估也不要把不稳的证据放上 verified 高位。
-    """
-    if record.verdict != Verdict.VERIFIED:
-        return record
-    note = "[rescue 上限：原 verdict=verified，因证据来自重试轮，下调为 partially_verified]"
-    new_comment = (record.comment + " " + note).strip() if record.comment else note
-    return record.model_copy(
-        update={
-            "verdict": Verdict.PARTIALLY_VERIFIED,
-            "comment": new_comment[:1000],
-        }
-    )
 
 
 def _collect_evidence(

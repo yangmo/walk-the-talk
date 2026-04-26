@@ -24,11 +24,11 @@ from __future__ import annotations
 import ast
 import difflib
 import operator as op
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, Iterable, Protocol
+from typing import Any, Protocol
 
 from ..ingest.financials_store import FinancialsStore
-
 
 # ============== compute ==============
 
@@ -126,7 +126,7 @@ def _safe_eval(node: ast.AST) -> Any:
     if isinstance(node, ast.Compare):
         # Python 链式比较语义：a < b < c → a<b and b<c
         left = _safe_eval(node.left)
-        for op_node, comparator in zip(node.ops, node.comparators):
+        for op_node, comparator in zip(node.ops, node.comparators, strict=True):
             fn = _COMPARE_OPS.get(type(op_node))
             if fn is None:
                 raise ComputeError(f"unsupported compare op: {type(op_node).__name__}")

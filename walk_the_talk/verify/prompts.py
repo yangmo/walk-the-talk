@@ -22,7 +22,6 @@ from typing import Any
 
 from ..core.models import Claim
 
-
 # ============== 通用 system prompt ==============
 
 # 注意：PREMATURE 已经被 pipeline 在 agent 之前短路掉，所以 finalize 输出里不允许 premature。

@@ -12,7 +12,6 @@ from ..core.models import Claim, VerificationRecord
 from . import templates as T
 from .highlights import HighlightItem
 
-
 # ============== 评分板 ==============
 
 

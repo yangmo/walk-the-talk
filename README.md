@@ -7,8 +7,41 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
+[![Status](https://img.shields.io/badge/status-WIP%20%E2%80%94%20do%20not%20use%20reports%20as%20advice-orange.svg)](#%E9%A1%B9%E7%9B%AE%E7%8A%B6%E6%80%81%E4%B8%8E%E5%85%8D%E8%B4%A3%E5%A3%B0%E6%98%8E)
 
 ---
+
+## 项目状态与免责声明
+
+> ⚠️ **本项目仍在开发中，当前生成的 report.md 不能作为投资判断依据。**
+>
+> - **抽 claim 阶段**：DeepSeek-chat 对前瞻性断言的识别约 80% 准确，剩余 20% 含误抽（把当期事实当成承诺）或漏抽。
+> - **数值校验阶段**：query_financials 依赖的 financials.db 仍存在已知 unit-normalization bug（FY2024 营收量级与公开披露差 5x，详见 [design.md §14.1](design.md#141-已知-issue-unit-normalization-bug高优先级)）；这条会污染所有"持平 / 增幅 X%" 类 claim 的 verdict。
+> - **整体可信度评分**：分母只算 V/P/F，不惩罚数据缺失，但目前 NV/PR 占比偏高（16/22），单一公司样本下评分波动很大，不具备跨公司可比性。
+>
+> 后续凡是出现 SMIC 报告数字（如"整体可信度 58"、verdict 分布）都来自当前未修 bug 的版本，仅作为 **pipeline 跑通的演示**，不是对中芯国际管理层的真实评价。
+
+---
+
+## High-level 架构
+
+`walk-the-talk` 是一个 **RAG（检索增强生成）+ 工具调用 LLM agent** 的复合管线。整体可以理解成两条互相喂数据的链路：
+
+**结构化链路（数据层）**：HTML 表格 → 单位归一 → SQLite（``financials.db``）→ Phase 3 的 ``query_financials`` 工具直查
+**非结构化链路（语义层）**：HTML 文本 → 章节 + 段落切分（chunk）→ BGE-small-zh embedding → **Chroma 向量库** + **BM25 sparse 索引** → Phase 3 的 ``query_chunks`` 工具混搜（dense + BM25 通过 RRF 融合）
+
+Phase 3 的 verifier 是一个 **LangGraph 状态机**：
+
+- ``plan`` 节点（LLM）决定下一步调哪个工具
+- ``call_tool`` 节点执行工具（compute / query_financials / query_chunks）
+- ``finalize`` 节点产 verdict
+- **rescue gate**（独立模块 ``verify/rescue.py``）：finalize 输出 ``not_verifiable`` 时若仍有预算且未做过 chunk 重试，**强制回到 plan 走一轮新检索**——把"LLM 一查不到就放弃"的失误率压下来
+- **rescue ceiling**：救援轮即使最终给 ``verified`` 也强制下调为 ``partially_verified``，宁愿低估不高估
+
+LangGraph 在这里替代了"手写循环 + 状态变量"的常见做法：plan↔tool↔finalize 是天然的有向图，节点之间只通过 TypedDict state 通信，调试时可以用 ``StateGraph.compile().get_graph().draw_png()`` 直接画出当前流程。
+
+数值计算则用 **AST 白名单的 ``compute(expr)`` 工具** 完成（不是让 LLM 心算）——这是消除 LLM 算术幻觉最直接的方式：算术、比较、布尔、abs/min/max/round 这些是合法节点，其它一律拒绝。
+
 
 ## 这个项目在解决什么问题
 
@@ -25,7 +58,10 @@
 
 ---
 
-## 中芯国际（688981）实跑结果
+## 中芯国际（688981）跑通演示
+
+> ⚠️ **下面所有数字仅用于展示 pipeline 各阶段的产出形态，不是对中芯国际管理层的真实评价。**
+> 当前已知 unit-normalization bug 会污染 capex / 营收等"持平 / 增幅 X%" 类 claim 的 verdict；评分公式对 NV/PR 占比偏高的样本也不稳定。修完这些再发布的版本会有更可信的数字。
 
 用 SMIC FY2021–FY2025 五年年报做了一次端到端跑批：
 
@@ -37,23 +73,21 @@
 | ❌ failed | 2 |
 | ❓ not_verifiable | 8 |
 | ⏳ premature（窗口未到） | 8 |
-| **整体可信度** | **58** / 100 |
-| 量化承诺命中率 | 83 / 100 |
-| 资本配置准确度 | 33 / 100 |
+| **整体可信度（演示）** | 58 / 100 |
+| 量化承诺命中率（演示） | 83 / 100 |
+| 资本配置准确度（演示） | 33 / 100 |
 
-报告里挑出来的两条**大幅落空（FAILED）**——都是 capex 持平诺言两次违约：
+样本输出（**结论本身受 bug 影响，仅用于看 pipeline 怎么呈现 verdict**）：
 
-> **[FY2022-005]** "资本开支与上一年相比大致持平" — FY2023 实际 capex 53.87B 元 vs FY2022 42.21B 元，增长约 **27.6%**。
->
-> **[FY2024-004]** "资本开支与上一年持平" — FY2025 实际 capex 599.51 亿元 vs FY2024 545.59 亿元，增长约 **9.9%**。
+**FAILED 案例**：
 
-最值钱的 **VERIFIED**：
+> **[FY2022-005]** "资本开支与上一年相比大致持平" — FY2023 实际 capex 53.87B 元 vs FY2022 42.21B 元，增长约 27.6%。
+
+**VERIFIED 案例**：
 
 > **[FY2022-003]** "毛利率在 20% 左右" — 实际 FY2023 毛利率 21.89%，符合。
->
-> **[FY2022-004]** "折旧同比增长超两成" — 实际 FY2023 折旧 26.5% 同比增长，超过 20% 门槛。
 
-完整报告样例见 [`docs/sample_report.md`](#)（项目跑通后由 `walk-the-talk report` 自动生成）。
+完整报告样例见 [`docs/sample_report.md`](#)（项目跑通后由 `walk-the-talk report` 自动生成）。**该报告同样是演示性质，不能直接拿去做投资判断。**
 
 ---
 
@@ -138,7 +172,7 @@ walk-the-talk extract data/中芯国际 -t 688981 -c "中芯国际"
 # Phase 3：用后续年份事实校验 claim（约 3-8 min/公司，看 claim 数）
 walk-the-talk verify data/中芯国际 -t 688981 -c "中芯国际"
 
-# Phase 4：生成 markdown 报告
+# Phase 4：生成 markdown 报告（⚠️ 当前是开发版本，输出仅供 pipeline 演示，不做投资判断）
 walk-the-talk report data/中芯国际 -t 688981 -c "中芯国际"
 ```
 

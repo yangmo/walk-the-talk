@@ -62,4 +62,16 @@ target-version = "py310"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP"]
-ignore = ["E501"]
+ignore = [
+    "E501",   # line-too-long: we prefer readable lines over hard 79/110 cap
+    "B008",   # function-call-in-argument-default: Typer Option/Argument
+              # rely on this pattern; whitelisting just for typer would be noisier.
+]
+
+# Treat these factory calls as immutable for B008 (kept for clarity even
+# though B008 is ignored above — useful if we ever flip B008 back on).
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = [
+    "typer.Argument",
+    "typer.Option",
+]

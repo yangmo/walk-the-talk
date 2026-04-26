@@ -10,10 +10,10 @@
 
 - **想快速理解项目** → 看仓库根 [README.md](README.md)
 - **关心技术决策为什么这么做** → §一 技术选型综述
-- **想看四阶段每个怎么实现的** → §四 Phase 1 / §五 Phase 2 / §六 Phase 3 / §七 Phase 4
-- **想看上线后基于真实数据做了哪些迭代** → §九 上线后优化（P0-P4）
-- **想看真实数据跑出来什么结果** → §十 SMIC 跑批结果
-- **关心已知问题与未来计划** → §十一 已知 issues + Roadmap
+- **想看四阶段每个怎么实现的** → §四 Phase 1 / §五 Phase 2 / §六 Phase 3 / §十一 Phase 4
+- **想看上线后基于真实数据做了哪些迭代** → §十二 上线后优化（P0-P4）
+- **想看真实数据跑出来什么结果** → §十三 SMIC 跑批结果
+- **关心已知问题与未来计划** → §十四 已知 issues + Roadmap
 
 ## 决策基线表（最终版）
 
@@ -836,26 +836,4 @@ ORDER BY fiscal_period;
 | v0.5 | Reranker（如 BGE-reranker）提升 query_chunks 召回精度 |
 | v0.6 | 业绩说明会 / 电话会议纪要纳入 claim 抽取范围 |
 
----
-
-## 十五、决策日志
-
-按时间顺序记录关键决策。每条决策不一定都"对"，但都被实证或反思验证过。
-
-| # | 日期 | 决策 | 状态 |
-|---|---|---|---|
-| 1 | 2026-04-25 | 输入格式选 HTML 而非 PDF（实测对比四维度均胜出） | ✓ 验证 |
-| 2 | 2026-04-25 | 数据获取手动下载，不内置爬虫 | ✓ 验证 |
-| 3 | 2026-04-25 | embedding 选 BGE-small-zh-v1.5（512 维，CPU 单核够用） | ✓ 验证 |
-| 4 | 2026-04-25 | 向量库选 Chroma 而非 LanceDB（招聘市场出现率更高） | ✓ 验证 |
-| 5 | 2026-04-25 | LLM 选 DeepSeek-chat（chat 失败两级降级 reasoner） | ✓ 验证 |
-| 6 | 2026-04-25 | LangGraph 用法：每个 Phase 内部状态机，phase 间靠落盘文件解耦 | ✓ 验证 |
-| 7 | 2026-04-25 | `compute(expr)` 用 AST 白名单消除 LLM 算术幻觉 | ✓ 验证 |
-| 8 | 2026-04-25 | claim_type 收敛到 5 类（quantitative_forecast / strategic_commitment / capital_allocation / risk_assessment / qualitative_judgment） | ✓ 验证 |
-| 9 | 2026-04-26 (P0) | canonical 白名单注入 verify system prompt | ✓ 上线 |
-| 10 | 2026-04-26 (P1) | query_financials 加 5 个派生字段（ratio + sum） | ✓ 上线 |
-| 11 | 2026-04-26 (P2) | ingest `_taxonomy.py` 补折旧/摊销 alias | ✓ 上线 |
-| 12 | 2026-04-26 (P3) | Phase 4 report 实装；评分公式：partially_verified 权重 0.5、claim_type 平权、NV/PR/EXP 不进分母 | ✓ 上线 |
-| 13 | 2026-04-26 (P4) | verify rescue gate + ceiling（救援轮最多升至 partially_verified） | ✓ 上线 |
-| 14 | 2026-04-26 | 报告 FAILED 条目对 actual_value 量级偏差 ≥ 5x 标⚠️"数据存疑" | ✓ 上线 |
-| 15 | 2026-04-26 | 已知 unit-normalization 单位归一 bug 独立 ticket（FY2024 营收量级异常） | 待修 |
+> 版本变更与时间节点见 [`CHANGELOG.md`](CHANGELOG.md)。
