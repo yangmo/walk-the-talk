@@ -1,0 +1,65 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "walk-the-talk"
+version = "0.1.0"
+description = "回溯上市公司年报中管理层的可验证断言，用后续年份的事实回头打分"
+requires-python = ">=3.10"
+authors = [{ name = "alfy" }]
+readme = "README.md"
+
+dependencies = [
+    # HTML parsing
+    "beautifulsoup4>=4.12",
+    "lxml>=5.0",
+    "chardet>=5.2",
+
+    # Embedding & vector store
+    "sentence-transformers>=2.7",
+    "chromadb>=0.5",
+
+    # Chinese tokenization & BM25
+    "rank-bm25>=0.2.2",
+    "jieba>=0.42",
+
+    # Orchestration
+    "langgraph>=0.2",
+    "langgraph-checkpoint-sqlite>=2.0",
+
+    # Data models
+    "pydantic>=2.6",
+
+    # CLI & config
+    "typer>=0.12",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0",
+
+    # LLM (used in Phase 2-3)
+    "openai>=1.40",
+
+    # Logging
+    "rich>=13.7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.5",
+]
+
+[project.scripts]
+walk-the-talk = "walk_the_talk.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["walk_the_talk"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["E501"]
