@@ -120,12 +120,14 @@ addopts = [
     "--strict-markers",      # 未声明的 marker 直接报错，避免拼写错误
     "--strict-config",       # 配置 key 写错也直接报错
 ]
+# Note: 不再用 ``error`` 把所有 warning 升级成 error。
+# jieba / numpy / pkg_resources 等第三方库在 import 阶段就会发 DeprecationWarning，
+# 一旦升级成 error 会让模块"半完成初始化"——后续 jieba.cut 等属性根本拿不到。
+# 项目代码自己的 deprecation 由 ruff 的 UP / B / W 规则在 lint 层覆盖，足够。
 filterwarnings = [
-    "error",                 # 默认把 warning 升级成 error，避免被忽略
-    # 第三方库的已知噪音 warning 在这里降级
-    "ignore::DeprecationWarning:chromadb.*",
-    "ignore::DeprecationWarning:google.*",
+    "ignore::DeprecationWarning",
     "ignore::PendingDeprecationWarning",
+    "ignore::ResourceWarning",
 ]
 
 
