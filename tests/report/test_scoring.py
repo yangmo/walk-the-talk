@@ -6,8 +6,6 @@
 """
 from __future__ import annotations
 
-import pytest
-
 from walk_the_talk.core.enums import ClaimStatus, ClaimType, SectionCanonical, Verdict
 from walk_the_talk.core.models import Claim, Horizon, Predicate, VerificationRecord
 from walk_the_talk.report.scoring import (
@@ -17,7 +15,6 @@ from walk_the_talk.report.scoring import (
     quantitative_hit_rate,
     verdict_distribution,
 )
-
 
 # ============== fixture ==============
 

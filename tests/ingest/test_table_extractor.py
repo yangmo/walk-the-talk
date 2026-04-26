@@ -22,9 +22,6 @@ from walk_the_talk.ingest._taxonomy import (
     parse_unit_from_caption,
 )
 
-FIXTURE = Path(__file__).parent / "fixtures" / "中芯国际" / "2025.html"
-
-
 # ============== _taxonomy ==============
 
 
@@ -543,9 +540,10 @@ def test_store_persistence(tmp_path: Path):
 # ============== 端到端：SMIC 2025 ==============
 
 
-@pytest.mark.skipif(not FIXTURE.exists(), reason="fixture missing")
-def test_smic_2025_extract_and_store(tmp_path: Path):
-    rp = load_html(FIXTURE)
+def test_smic_2025_extract_and_store(tmp_path: Path, smic_html_path: Path):
+    if not smic_html_path.exists():
+        pytest.skip("SMIC fixture missing")
+    rp = load_html(smic_html_path)
     lines = extract_from_report(rp)
 
     # 至少 BALANCE / INCOME / CASHFLOW 都有

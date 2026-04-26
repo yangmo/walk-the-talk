@@ -1,4 +1,4 @@
-"""Phase 1.6 pipeline + CLI tests。
+"""Phase 1 pipeline + CLI tests。
 
 主要覆盖：
 - discover_years：扫年报文件，按年升序
@@ -6,12 +6,13 @@
 - run_pipeline 端到端：SMIC 2025 单年 + HashEmbedder（CI 友好）
 - resume 行为：二次跑全 skip
 - CLI：typer CliRunner 跑 --help / --version / ingest 端到端
+
+``smic_data_dir`` fixture 来自 ``tests/conftest.py``。
 """
 
 from __future__ import annotations
 
 import json
-import shutil
 from pathlib import Path
 
 import pytest
@@ -19,17 +20,13 @@ from typer.testing import CliRunner
 
 from walk_the_talk.cli import app
 from walk_the_talk.config import IngestSettings
-from walk_the_talk.ingest import HashEmbedder, FinancialsStore, ReportsStore
+from walk_the_talk.ingest import FinancialsStore, HashEmbedder, ReportsStore
 from walk_the_talk.ingest.pipeline import (
     PERSISTED_PHASES,
     ProgressTracker,
     discover_years,
     run_pipeline,
 )
-
-FIXTURE_DIR = Path(__file__).parent / "fixtures" / "中芯国际"
-FIXTURE_HTML = FIXTURE_DIR / "2025.html"
-
 
 # ============== discover_years ==============
 
@@ -117,17 +114,6 @@ def test_persisted_phases_order():
 
 
 # ============== run_pipeline 端到端（SMIC 2025） ==============
-
-
-@pytest.fixture
-def smic_data_dir(tmp_path: Path) -> Path:
-    """复制 SMIC 2025 fixture 到 tmp，避免污染原 fixture 目录。"""
-    if not FIXTURE_HTML.exists():
-        pytest.skip("SMIC fixture missing")
-    dst = tmp_path / "smic"
-    dst.mkdir()
-    shutil.copy(FIXTURE_HTML, dst / "2025.html")
-    return dst
 
 
 def _make_settings(data_dir: Path) -> IngestSettings:

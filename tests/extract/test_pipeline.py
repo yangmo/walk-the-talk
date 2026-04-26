@@ -10,11 +10,8 @@ from __future__ import annotations
 import json
 import sys
 import types
-from pathlib import Path
-from typing import Any
 
 import pytest
-
 
 # ============== sys.modules stubs（必须在 import pipeline 之前） ==============
 
@@ -54,7 +51,6 @@ from walk_the_talk.core.enums import SectionCanonical  # noqa: E402
 from walk_the_talk.core.models import Chunk  # noqa: E402
 from walk_the_talk.extract import pipeline as ext_pipeline  # noqa: E402
 from walk_the_talk.llm.client import LLMClient, LLMResponse  # noqa: E402
-
 
 # ============== 共用假对象 ==============
 

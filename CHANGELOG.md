@@ -10,7 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Refactor
 
 - **R0**：删杂物（`SMIC_report_preview.md`、`config.yaml.example`、误建 venv），加 `LICENSE`，建 `.github/` 占位。
-- **R1**：重写 `README.md`（架构图 + SMIC 真实数据 + 技术选型表）；合并 `design.md` + `design_p1234.md` 为单一真相源；新建 `CHANGELOG.md`。
+- **R1**：重写 `README.md`（架构图 + SMIC 真实数据 + 技术选型表 + 开发中免责声明 + High-level RAG/LangGraph 架构说明）；合并 `design.md` + `design_p1234.md` 为单一真相源；新建 `CHANGELOG.md`；删 `design.md` 决策日志（信息归 CHANGELOG）。
+- **R3**：抽 rescue gate / ceiling 到独立模块 `verify/rescue.py`；删 verify/pipeline.py 两个 deprecated 函数（`_verify_one_claim`、`_detect_current_fiscal_year`）；ruff 配置 + auto-fix，Phase 2/3/4 + llm/core/cli/config 全部 ruff 零 warning。
+- **R4**：测试目录按 phase 分子目录（`tests/{ingest,extract,verify,report}/`），git mv 保 history；新建 `tests/conftest.py` 提供共享 fixture（`fixtures_dir` / `smic_html_path` / `smic_data_dir`），消除 5 处散落的 `Path(__file__).parent / "fixtures" / ...`；新建 `tests/verify/test_rescue.py` 单测 P4 rescue 边界（14 个 case）。
 
 ## [0.1.0] – 2026-04-26
 

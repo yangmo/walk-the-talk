@@ -18,7 +18,6 @@ from walk_the_talk.verify.tools import (
     query_financials,
 )
 
-
 # ============== compute ==============
 
 

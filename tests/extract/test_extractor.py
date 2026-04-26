@@ -5,14 +5,11 @@ from __future__ import annotations
 import json
 from typing import Any
 
-import pytest
-
 from walk_the_talk.core.enums import SectionCanonical
 from walk_the_talk.core.models import Chunk
 from walk_the_talk.extract.extractor import extract_from_chunk
 from walk_the_talk.extract.postprocess import postprocess_claims
 from walk_the_talk.llm.client import LLMClient, LLMResponse  # 直接走基类，绕开 openai 可选依赖
-
 
 # ============== Mock LLM ==============
 

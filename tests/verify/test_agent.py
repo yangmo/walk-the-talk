@@ -21,9 +21,7 @@ import json
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable
-
-import pytest
+from typing import Any
 
 from walk_the_talk.core.enums import (
     ClaimType,
@@ -42,7 +40,6 @@ from walk_the_talk.core.models import (
 from walk_the_talk.ingest.financials_store import FinancialsStore
 from walk_the_talk.llm import LLMClient, LLMResponse
 from walk_the_talk.verify.agent import _KNOWN_TOOLS, AgentResult, run_agent
-
 
 # ============== 通用 helpers ==============
 

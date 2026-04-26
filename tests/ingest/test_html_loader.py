@@ -12,21 +12,24 @@ from walk_the_talk.ingest.html_loader import (
     _split_sections,
 )
 
-FIXTURE = Path(__file__).parent / "fixtures" / "中芯国际" / "2025.html"
+
+def _require_fixture(path: Path) -> None:
+    if not path.exists():
+        pytest.skip(f"SMIC fixture missing: {path}")
 
 
-@pytest.mark.skipif(not FIXTURE.exists(), reason="fixture missing")
-def test_load_smic_2025_meta():
-    rp = load_html(FIXTURE)
+def test_load_smic_2025_meta(smic_html_path: Path):
+    _require_fixture(smic_html_path)
+    rp = load_html(smic_html_path)
     assert rp.ticker == "688981"
     assert rp.fiscal_year == 2025
     assert rp.encoding == "gbk"
     assert rp.report_type.value == "annual"
 
 
-@pytest.mark.skipif(not FIXTURE.exists(), reason="fixture missing")
-def test_load_smic_2025_sections():
-    rp = load_html(FIXTURE)
+def test_load_smic_2025_sections(smic_html_path: Path):
+    _require_fixture(smic_html_path)
+    rp = load_html(smic_html_path)
     titles = [s.title for s in rp.sections]
     # 9 节章节都应被识别（释义 / 致股东信 / 公司简介 / MDA / 董事会报告 / 治理 / 重要事项 / 股份变动 / 财报）
     assert len(rp.sections) >= 8, f"got {len(rp.sections)} sections: {titles}"
@@ -45,9 +48,9 @@ def test_load_smic_2025_sections():
     assert seqs == sorted(seqs)
 
 
-@pytest.mark.skipif(not FIXTURE.exists(), reason="fixture missing")
-def test_load_smic_2025_tables():
-    rp = load_html(FIXTURE)
+def test_load_smic_2025_tables(smic_html_path: Path):
+    _require_fixture(smic_html_path)
+    rp = load_html(smic_html_path)
     # 中芯国际 2025 年报有约 280+ 张表
     assert len(rp.tables) > 50, f"too few tables: {len(rp.tables)}"
 
@@ -64,11 +67,11 @@ def test_load_smic_2025_tables():
     assert total_refs > 50, f"sections only contain {total_refs} table refs"
 
 
-@pytest.mark.skipif(not FIXTURE.exists(), reason="fixture missing")
-def test_section_text_is_not_polluted_by_table_chars():
+def test_section_text_is_not_polluted_by_table_chars(smic_html_path: Path):
     """章节正文里不应残留 <table> 的列内文字（如 |、---），
     只能是 [[TABLE_PLACEHOLDER_N]] 占位符形式。"""
-    rp = load_html(FIXTURE)
+    _require_fixture(smic_html_path)
+    rp = load_html(smic_html_path)
     for s in rp.sections:
         # markdown 表格的分隔行 "|---|---|" 不应出现在 section.text 里
         assert "|---|" not in s.text, f"table markdown leaked into section {s.title}"

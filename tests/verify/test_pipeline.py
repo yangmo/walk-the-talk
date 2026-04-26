@@ -49,7 +49,6 @@ from walk_the_talk.verify.pipeline import (
     run_verify,
 )
 
-
 # ============== Stub LLM：一律 finalize → not_verifiable ==============
 
 

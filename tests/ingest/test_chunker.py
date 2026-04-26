@@ -7,15 +7,12 @@ from pathlib import Path
 import pytest
 
 from walk_the_talk.core.enums import SectionCanonical
-from walk_the_talk.core.models import ParsedReport, Section, Table
+from walk_the_talk.core.models import ParsedReport, Section
 from walk_the_talk.ingest import chunk_report, classify_section, load_html
 from walk_the_talk.ingest.chunker import (
     DEFAULT_MAX_SIZE,
     chunk_section,
 )
-
-FIXTURE = Path(__file__).parent / "fixtures" / "中芯国际" / "2025.html"
-
 
 # ============== section_canonical ==============
 
@@ -147,9 +144,10 @@ def test_chunk_id_global_uniqueness_across_sections():
 # ============== 端到端：SMIC 2025 ==============
 
 
-@pytest.mark.skipif(not FIXTURE.exists(), reason="fixture missing")
-def test_chunk_smic_2025_endtoend():
-    rp = load_html(FIXTURE)
+def test_chunk_smic_2025_endtoend(smic_html_path: Path):
+    if not smic_html_path.exists():
+        pytest.skip("SMIC fixture missing")
+    rp = load_html(smic_html_path)
     chunks = chunk_report(rp)
 
     # 总数合理：~200-1000 区间

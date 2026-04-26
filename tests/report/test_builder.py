@@ -1,8 +1,6 @@
 """build_report / sections / highlights 的端到端 smoke + 关键 section 校验。"""
 from __future__ import annotations
 
-import pytest
-
 from walk_the_talk.core.enums import ClaimStatus, ClaimType, SectionCanonical, Verdict
 from walk_the_talk.core.models import (
     Claim,
@@ -20,14 +18,12 @@ from walk_the_talk.report.highlights import (
     pick_premature_highlights,
     pick_verified_highlights,
 )
-from walk_the_talk.report.scoring import latest_verdict_per_claim
 from walk_the_talk.report.sections import (
     render_highlights,
     render_method_note,
     render_scoreboard,
     render_timeline,
 )
-
 
 # ============== fixture ==============
 
