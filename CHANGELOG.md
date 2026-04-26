@@ -58,7 +58,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Known Issues
 
-- `#unit-normalization-bug`：FY2023 → FY2024 营收量级差 5x，疑为多片段表格单位继承漏处理。详见 [design.md §14.1](design.md#141-已知-issue-unit-normalization-bug高优先级)。
+- `#unit-normalization-bug`：FY2023 → FY2024 营收量级差 5x，疑为多片段表格单位继承漏处理。详见 [design.md §14.1](design.md#141-已知-issue-unit-normalization-bug-high-优先级)。
 
 [Unreleased]: https://github.com/yangmo/walk-the-talk/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/yangmo/walk-the-talk/releases/tag/v0.1.0

@@ -591,7 +591,7 @@ def fan_out(state: OuterState) -> list[Send]:
 1. **embedding 模型尺寸**：定 **BGE-small-zh**（512 维，~100MB）。本地 CPU 验证优先，召回不够再升 v1.5。
 2. **vector store 选 LanceDB 还是 Chroma**：定 **Chroma**。求职考虑（国内招聘描述里出现频率更高），技术上在本项目数据量级差异可忽略。
 3. **verification_plan 产出阶段**：定 **extract 阶段产出粗 plan**。verifier 第一轮通过 `list_available_line_items` 自检字段名，错了再 reasoner 修正。extract 主调用走 deepseek-chat，schema 校验失败两级降级到 reasoner。
-4. **GitHub 仓库名 + 本地路径**：定 `walk-the-talk`，本地路径 `/Users/alfy/Desktop/workspace/walk-the-talk`。
+4. **GitHub 仓库名**：定 `walk-the-talk`（[github.com/yangmo/walk-the-talk](https://github.com/yangmo/walk-the-talk)）。
 5. **测试 fixture**：v1 主链路跑通后补 smoke test（`html_loader.py` 和 `table_extractor.py`），断言一条已知值（如中芯国际 FY2024 营收）防解析静默崩坏。HTML 文件体积小可直接入版本库。
 6. **LangGraph checkpointer**：定 **SQLite（`SqliteSaver`）**，文件 `<data_dir>/_walk_the_talk/checkpoints.db`。开发期想纯内存只需把 `orchestration/checkpointer.py` 切到 `MemorySaver`，整体代码不变。
 7. **输入格式**：定 **HTML（新浪财经 `vCB_AllBulletinDetail.php`）**。理由见 §零；实证依据：中芯国际 FY2025 同份年报的 PDF / HTML 提取对比，HTML 在章节切分、段落完整性、噪音剔除、表格保真四维度均胜出。

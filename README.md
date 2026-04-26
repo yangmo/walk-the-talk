@@ -16,7 +16,7 @@
 > ⚠️ **本项目仍在开发中，当前生成的 `report.md` 不能作为投资判断依据。**
 >
 > - **抽取阶段**：DeepSeek-chat 对前瞻性断言的识别约 80% 准确，剩余 20% 含误抽（把当期事实当成承诺）或漏抽。
-> - **数值校验阶段**：`financials.db` 仍存在已知的"单位归一"（unit-normalization）bug——FY2024 营收量级与公开披露数据相差约 5 倍（详见 [design.md §14.1](design.md#141-已知-issue-unit-normalization-bug高优先级)）；这条会污染所有"持平 / 增幅 X%" 类 claim 的判定结果。
+> - **数值校验阶段**：`financials.db` 仍存在已知的"单位归一"（unit-normalization）bug——FY2024 营收量级与公开披露数据相差约 5 倍（详见 [design.md §14.1](design.md#141-已知-issue-unit-normalization-bug-high-优先级)）；这条会污染所有"持平 / 增幅 X%" 类 claim 的判定结果。
 > - **整体可信度评分**：分母只算"已兑现 / 部分兑现 / 没兑现"三类，不惩罚数据缺失，但单一公司样本下评分波动很大，不具备跨公司可比性。
 >
 > 后续凡是出现中芯国际报告数字（如"整体可信度 58"、verdict 分布）都来自当前未修 bug 的版本，仅作为 **流水线跑通的演示**，不是对中芯国际管理层的真实评价。
@@ -180,7 +180,7 @@ data/中芯国际/
 ```
 
 > HTML 来源是新浪财经的"全部公告详情页"（`vCB_AllBulletinDetail.php`），手动下载——不内置爬虫。
-> 详见 [design.md §0.2](design.md#02-html-来源约定)。
+> 详见 [design.md §0.2](design.md#02-html-来源)。
 
 四个阶段挨个跑：
 
@@ -223,7 +223,7 @@ _walk_the_talk/
 
 | 维度 | 选择 | 为什么 |
 |---|---|---|
-| 输入格式 | **HTML（手动下载）** | 实测 HTML 比 PDF 噪音少 70%，章节切分一行正则解决，表格 `<tr><td>` 直读不会列错位。详见 [design.md §0.1](design.md#01-为什么选-html-而不是-pdf) |
+| 输入格式 | **HTML（手动下载）** | 实测 HTML 比 PDF 噪音少 70%，章节切分一行正则解决，表格 `<tr><td>` 直读不会列错位。详见 [design.md §0.1](design.md#01-为什么选-html) |
 | 中文向量化（embedding） | **BGE-small-zh-v1.5**（512 维） | 中文金融语义检索 SOTA-tier，CPU 单核能跑，模型~100MB；与 BM25 在混搜里互补 |
 | 向量库 | **Chroma**（持久化） | 单文件部署、Python 原生、足够 ~10K chunks 量级；不引入 Docker / Postgres |
 | 关键词检索 | **rank_bm25 + jieba** | 公司名、产品代号、line item 名（如"营业收入"）这种精确词，BM25 召回远好于向量 |
