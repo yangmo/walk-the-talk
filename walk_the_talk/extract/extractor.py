@@ -134,9 +134,7 @@ def _try_call(
     stats: dict[str, Any],
 ) -> tuple[list[dict[str, Any]] | None, str | None]:
     """单次调用 + JSON 解析。返回 (raw_claims_list, err_msg)。"""
-    response_format: dict[str, Any] | None = (
-        {"type": "json_object"} if json_mode else None
-    )
+    response_format: dict[str, Any] | None = {"type": "json_object"} if json_mode else None
     try:
         resp = client.chat(
             messages,

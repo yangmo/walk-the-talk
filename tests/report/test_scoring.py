@@ -4,6 +4,7 @@
 2. v1 不按 claim_type 加权
 3. NV/PR/EXP 不进分母
 """
+
 from __future__ import annotations
 
 from walk_the_talk.core.enums import ClaimStatus, ClaimType, SectionCanonical, Verdict
@@ -110,13 +111,11 @@ def test_overall_rounding() -> None:
 
     用非 half-boundary 值避免 Python banker's rounding（round(62.5)==62）的边界歧义。
     """
-    assert overall_credibility(
-        [_mk_record(Verdict.VERIFIED)] * 3 + [_mk_record(Verdict.FAILED)]
-    ) == 75
-    assert overall_credibility(
-        [_mk_record(Verdict.VERIFIED)] * 5
-        + [_mk_record(Verdict.PARTIALLY_VERIFIED)] * 3
-    ) == 81
+    assert overall_credibility([_mk_record(Verdict.VERIFIED)] * 3 + [_mk_record(Verdict.FAILED)]) == 75
+    assert (
+        overall_credibility([_mk_record(Verdict.VERIFIED)] * 5 + [_mk_record(Verdict.PARTIALLY_VERIFIED)] * 3)
+        == 81
+    )
 
 
 # ============== claim_type 子集 ==============
@@ -128,13 +127,13 @@ def test_quantitative_hit_rate_filters_claim_type() -> None:
         "C1": _mk_claim("C1", ClaimType.QUANTITATIVE_FORECAST),
         "C2": _mk_claim("C2", ClaimType.QUANTITATIVE_FORECAST),
         "C3": _mk_claim("C3", ClaimType.STRATEGIC_COMMITMENT),  # 不算
-        "C4": _mk_claim("C4", ClaimType.CAPITAL_ALLOCATION),    # 不算
+        "C4": _mk_claim("C4", ClaimType.CAPITAL_ALLOCATION),  # 不算
     }
     verifications = {
         "C1": [_mk_record(Verdict.VERIFIED)],
         "C2": [_mk_record(Verdict.FAILED)],
-        "C3": [_mk_record(Verdict.VERIFIED)],   # 应被过滤
-        "C4": [_mk_record(Verdict.VERIFIED)],   # 应被过滤
+        "C3": [_mk_record(Verdict.VERIFIED)],  # 应被过滤
+        "C4": [_mk_record(Verdict.VERIFIED)],  # 应被过滤
     }
     # quantitative 子集：C1 verified + C2 failed → 50
     assert quantitative_hit_rate(verifications, claims) == 50
@@ -170,7 +169,7 @@ def test_subset_uses_latest_verification() -> None:
     verifications = {
         "C1": [
             _mk_record(Verdict.FAILED, fy=2023),
-            _mk_record(Verdict.VERIFIED, fy=2025),       # 最新
+            _mk_record(Verdict.VERIFIED, fy=2025),  # 最新
             _mk_record(Verdict.PARTIALLY_VERIFIED, fy=2024),
         ]
     }
@@ -190,7 +189,7 @@ def test_verdict_distribution_counts_all_six() -> None:
     ]
     d = verdict_distribution(recs)
     assert d["verified"] == 2
-    assert d["partially_verified"] == 0   # 缺席补 0
+    assert d["partially_verified"] == 0  # 缺席补 0
     assert d["failed"] == 1
     assert d["not_verifiable"] == 1
     assert d["premature"] == 0

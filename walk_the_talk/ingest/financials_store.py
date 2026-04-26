@@ -11,9 +11,9 @@
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Iterator
 
 from ..core.enums import StatementType
 from ..core.models import FinancialLine
@@ -162,7 +162,8 @@ class FinancialsStore:
             clauses.append("is_consolidated=?")
             params.append(1 if is_consolidated else 0)
         sql = (
-            "SELECT * FROM financial_lines WHERE " + " AND ".join(clauses)
+            "SELECT * FROM financial_lines WHERE "
+            + " AND ".join(clauses)
             + " ORDER BY fiscal_period, statement_type, line_item_canonical"
         )
         cur = self._conn.execute(sql, params)
@@ -171,8 +172,7 @@ class FinancialsStore:
     def list_periods(self, ticker: str) -> list[str]:
         """该公司已有数据的财年（升序）。"""
         cur = self._conn.execute(
-            "SELECT DISTINCT fiscal_period FROM financial_lines "
-            "WHERE ticker=? ORDER BY fiscal_period ASC",
+            "SELECT DISTINCT fiscal_period FROM financial_lines WHERE ticker=? ORDER BY fiscal_period ASC",
             (ticker,),
         )
         return [r["fiscal_period"] for r in cur.fetchall()]
@@ -193,9 +193,7 @@ class FinancialsStore:
         if ticker is None:
             cur = self._conn.execute("SELECT COUNT(*) AS n FROM financial_lines")
         else:
-            cur = self._conn.execute(
-                "SELECT COUNT(*) AS n FROM financial_lines WHERE ticker=?", (ticker,)
-            )
+            cur = self._conn.execute("SELECT COUNT(*) AS n FROM financial_lines WHERE ticker=?", (ticker,))
         return int(cur.fetchone()["n"])
 
     # ============== 杂项 ==============
@@ -209,7 +207,7 @@ class FinancialsStore:
     def close(self) -> None:
         self._conn.close()
 
-    def __enter__(self) -> "FinancialsStore":
+    def __enter__(self) -> FinancialsStore:
         return self
 
     def __exit__(self, exc_type, exc, tb) -> None:

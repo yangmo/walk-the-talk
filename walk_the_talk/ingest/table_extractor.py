@@ -33,40 +33,71 @@ from ._taxonomy import (
 # 第一列文本里命中的关键词数 — 取最高者作为 statement_type。
 # 阈值 >=2 才视为可信，否则 OTHER。
 _BALANCE_KEYWORDS = {
-    "流动资产", "货币资金", "应收账款", "存货", "资产总计",
-    "负债合计", "所有者权益", "股东权益", "实收资本", "股本",
-    "归属于母公司所有者权益", "未分配利润", "盈余公积", "短期借款",
-    "应付账款", "合同负债", "固定资产", "在建工程",
+    "流动资产",
+    "货币资金",
+    "应收账款",
+    "存货",
+    "资产总计",
+    "负债合计",
+    "所有者权益",
+    "股东权益",
+    "实收资本",
+    "股本",
+    "归属于母公司所有者权益",
+    "未分配利润",
+    "盈余公积",
+    "短期借款",
+    "应付账款",
+    "合同负债",
+    "固定资产",
+    "在建工程",
 }
 _INCOME_KEYWORDS = {
-    "营业总收入", "营业收入", "营业总成本", "营业成本",
-    "净利润", "利润总额", "营业利润", "研发费用", "管理费用",
-    "销售费用", "财务费用", "归属于母公司股东的净利润",
-    "基本每股收益", "综合收益总额", "所得税费用",
+    "营业总收入",
+    "营业收入",
+    "营业总成本",
+    "营业成本",
+    "净利润",
+    "利润总额",
+    "营业利润",
+    "研发费用",
+    "管理费用",
+    "销售费用",
+    "财务费用",
+    "归属于母公司股东的净利润",
+    "基本每股收益",
+    "综合收益总额",
+    "所得税费用",
 }
 _CASHFLOW_KEYWORDS = {
     # 主表关键词
-    "经营活动产生的现金流量", "投资活动产生的现金流量",
-    "筹资活动产生的现金流量", "销售商品、提供劳务收到的现金",
-    "购建固定资产", "经营活动现金流入小计", "经营活动现金流出小计",
-    "支付给职工", "现金及现金等价物", "汇率变动",
+    "经营活动产生的现金流量",
+    "投资活动产生的现金流量",
+    "筹资活动产生的现金流量",
+    "销售商品、提供劳务收到的现金",
+    "购建固定资产",
+    "经营活动现金流入小计",
+    "经营活动现金流出小计",
+    "支付给职工",
+    "现金及现金等价物",
+    "汇率变动",
     # === 补充资料表（将净利润调节为经营活动现金流量）专属关键词 ===
     # 这些短语**仅在 cashflow 补充资料**里作为单独的行项目出现，
     # 既不出现于资产负债表也不出现于利润表。加进来让补充资料表自身
     # 拿到 c_score>=7 直接过 _is_strong_main，避免 ties 落到 BALANCE。
     # 不影响主三大表识别（主表已有 7+ 命中，supp 关键词不会减分）。
-    "经营性应收项目",       # "经营性应收项目的减少"
-    "经营性应付项目",       # "经营性应付项目的增加"
-    "递延所得税资产减少",   # 补充资料行（BALANCE 只是"递延所得税资产"）
-    "无形资产摊销",         # 补充资料行（BALANCE 只是"无形资产"）
-    "长期待摊费用摊销",     # 补充资料行
-    "投资损失",             # 补充资料行（INCOME 只有"投资收益"）
-    "固定资产折旧",         # 补充资料行（BALANCE 只是"固定资产"）
-    "资产减值准备",         # 补充资料行（INCOME 只有"资产减值损失"）
+    "经营性应收项目",  # "经营性应收项目的减少"
+    "经营性应付项目",  # "经营性应付项目的增加"
+    "递延所得税资产减少",  # 补充资料行（BALANCE 只是"递延所得税资产"）
+    "无形资产摊销",  # 补充资料行（BALANCE 只是"无形资产"）
+    "长期待摊费用摊销",  # 补充资料行
+    "投资损失",  # 补充资料行（INCOME 只有"投资收益"）
+    "固定资产折旧",  # 补充资料行（BALANCE 只是"固定资产"）
+    "资产减值准备",  # 补充资料行（INCOME 只有"资产减值损失"）
 }
 
 # 表头日期列模式（资产负债表 vs 利润 / 现金流）
-_DATE_COL_RE_TPL = r"{fy}\s*年\s*12\s*月\s*31\s*日"           # 资产负债表
+_DATE_COL_RE_TPL = r"{fy}\s*年\s*12\s*月\s*31\s*日"  # 资产负债表
 _PERIOD_COL_RE_TPL = r"{fy}\s*年(?:\s*度|\s*1\s*-\s*12\s*月|\s*全年|$|\s)"  # 利润/现金流
 
 # "单位：千元" / "单位:百万元" 这种行内单位声明
@@ -324,9 +355,7 @@ def extract_from_report(report: ParsedReport) -> list[FinancialLine]:
 
         is_strong = _is_strong_main(cls, n_rows)
         is_continuation = (
-            not is_strong
-            and cls.statement_type == prev_main_st
-            and cls.score >= _CONTINUATION_MIN_SCORE
+            not is_strong and cls.statement_type == prev_main_st and cls.score >= _CONTINUATION_MIN_SCORE
         )
 
         if not (is_strong or is_continuation):
@@ -338,11 +367,7 @@ def extract_from_report(report: ParsedReport) -> list[FinancialLine]:
         # 注意：HTML 经常把一张资产负债表拆成 3 个 <table>，每张行数 >40，
         # 都会被 _is_strong_main 命中；但只有第一张带 caption。所以不能仅在
         # is_continuation 时继承。
-        if (
-            cls.unit_multiplier == 1.0
-            and cls.statement_type == prev_main_st
-            and prev_unit_mult != 1.0
-        ):
+        if cls.unit_multiplier == 1.0 and cls.statement_type == prev_main_st and prev_unit_mult != 1.0:
             cls = TableClassification(
                 statement_type=cls.statement_type,
                 unit_label=prev_unit_label,
@@ -351,9 +376,7 @@ def extract_from_report(report: ParsedReport) -> list[FinancialLine]:
                 score=cls.score,
             )
 
-        new_lines = _extract_with(
-            tbl, cls, report.fiscal_year, report.ticker, report.source_path
-        )
+        new_lines = _extract_with(tbl, cls, report.fiscal_year, report.ticker, report.source_path)
         for ln in new_lines:
             key = (ln.statement_type, ln.line_item_canonical, ln.is_consolidated)
             if key in seen:

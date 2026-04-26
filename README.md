@@ -2,10 +2,24 @@
 
 > 给上市公司管理层的"前瞻性断言"打分：把每年年报里说的话，拿后续年份的事实回头核对。
 
+[![CI](https://github.com/yangmo/walk-the-talk/actions/workflows/ci.yml/badge.svg)](https://github.com/yangmo/walk-the-talk/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
+[![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen)](https://github.com/pre-commit/pre-commit)
 [![Status](https://img.shields.io/badge/status-%E5%BC%80%E5%8F%91%E4%B8%AD-orange.svg)](#%E9%A1%B9%E7%9B%AE%E7%8A%B6%E6%80%81%E4%B8%8E%E5%85%8D%E8%B4%A3%E5%A3%B0%E6%98%8E)
+
+---
+
+## 项目状态与免责声明
+
+> ⚠️ **本项目仍在开发中，当前生成的 `report.md` 不能作为投资判断依据。**
+>
+> - **抽取阶段**：DeepSeek-chat 对前瞻性断言的识别约 80% 准确，剩余 20% 含误抽（把当期事实当成承诺）或漏抽。
+> - **数值校验阶段**：`financials.db` 仍存在已知的"单位归一"（unit-normalization）bug——FY2024 营收量级与公开披露数据相差约 5 倍（详见 [design.md §14.1](design.md#141-已知-issue-unit-normalization-bug高优先级)）；这条会污染所有"持平 / 增幅 X%" 类 claim 的判定结果。
+> - **整体可信度评分**：分母只算"已兑现 / 部分兑现 / 没兑现"三类，不惩罚数据缺失，但单一公司样本下评分波动很大，不具备跨公司可比性。
+>
+> 后续凡是出现中芯国际报告数字（如"整体可信度 58"、verdict 分布）都来自当前未修 bug 的版本，仅作为 **流水线跑通的演示**，不是对中芯国际管理层的真实评价。
 
 ---
 
@@ -20,7 +34,16 @@
 3. 给每条断言打一个判定（verdict）：已兑现 / 部分兑现 / 没兑现 / 无法验证 / 窗口未到
 4. 综合出一个公司管理层的"说到做到"分数
 
-`walk-the-talk` 把这套流程做成了一个 4 阶段流水线：每个阶段独立成 CLI 子命令、产物落盘解耦——改 prompt 只需重跑对应阶段，不需要回到第一步重抽 chunk。
+`walk-the-talk` 把这套流程做成了一个 **4 阶段流水线**——每个阶段独立成 CLI 子命令、产物只通过落盘文件相互联系：
+
+| 阶段 | 干什么 | 输入 | 落盘产物 |
+|---|---|---|---|
+| **Phase 1 · Ingest**（解析 + 索引） | 读 HTML 年报，切章节、切段落（chunk）、抽三大表行项目；中文向量化后写入向量库与关键词索引；表格数据归一到统一单位写进财务库 | `<year>.html` × N | `chroma/`、`bm25.pkl`、`financials.db` |
+| **Phase 2 · Extract**（抽前瞻断言） | 对 chunk 调 LLM，把"管理层对未来的判断 / 承诺 / 预测"识别成结构化 `Claim`（含 metric / horizon / predicate）；带去重 + 时效过滤 | Phase 1 的 chunks | `claims.json` |
+| **Phase 3 · Verify**（用后续年份事实校验） | 对每条 claim 跑 LangGraph 状态机：plan → 调工具（`compute` / `query_financials` / `query_chunks`）→ finalize 给判定。query_financials 查 Phase 1 的 `financials.db`，query_chunks 查 Phase 1 的向量 + 关键词索引 | `claims.json` + `financials.db` + chunks | `verdicts.json` |
+| **Phase 4 · Report**（合成报告） | 不调 LLM，纯本地合成：算整体可信度评分、按年份分组的简史、突出事件高亮、数据存疑标注 | `claims.json` + `verdicts.json`（+ `financials.db` 用作异常检测参考） | `report.md` |
+
+四个阶段**只通过落盘文件解耦**——这是核心设计选择：调任何一个阶段的 prompt / 算法都只需重跑那一个阶段，不需要回到第一步重抽 chunk。每个阶段都支持 `--no-resume` 全量重跑、按年 / 按 claim 编号过滤，迭代成本极低。
 
 ---
 
@@ -33,26 +56,28 @@
 
 第三阶段（Verify）的核心是一个 **LangGraph 状态机**：
 
+```mermaid
+stateDiagram-v2
+    direction LR
+    [*] --> plan
+    plan --> call_tool: action=tool
+    plan --> finalize: action=finalize
+    call_tool --> plan: 还有 iter 预算
+    call_tool --> finalize_forced: 预算耗尽
+    finalize --> [*]: 直接收尾
+    finalize --> plan: rescue 触发
+    finalize_forced --> [*]
+```
+
 - `plan` 节点（LLM）决定下一步调哪个工具
 - `call_tool` 节点执行工具（`compute` / `query_financials` / `query_chunks`）
 - `finalize` 节点产出 verdict
-- **rescue 机制**：当 `finalize` 第一次给"无法验证"时，若仍有调用预算且尚未做过原文重检索，强制回到 `plan` 走一轮新检索（同义词扩展 / 拓宽时间窗 / 提高 top-k）；救援轮即使最终给"已兑现"也强制下调为"部分兑现"，宁愿低估不高估。
+- **rescue 机制**（图中 `finalize → plan` 那条边）：当 `finalize` 第一次给"无法验证"时，若仍有调用预算且尚未做过原文重检索，强制回到 `plan` 走一轮新检索（同义词扩展 / 拓宽时间窗 / 提高 top-k）；救援轮即使最终给"已兑现"也强制下调为"部分兑现"，宁愿低估不高估。
+- **finalize_forced**：当 `call_tool` 后已经用完 iter 预算，跳过常规 `finalize` 改走它，提示 LLM "工具配额已尽，用现有信息给最佳判断"——不让 agent 卡死。
 
 为什么用 LangGraph 而不是手写循环：plan ↔ tool ↔ finalize 是天然的有向图，节点之间只通过 TypedDict 状态通信，调试时可以直接画出当前流程；rescue 这种"一次性强制回环"用 LangGraph 的条件边写起来比 if/while 嵌套清晰得多。
 
 数值计算交给独立的 `compute(expr)` 工具——基于 AST 白名单（abstract syntax tree），只允许算术、比较、布尔、`abs/min/max/round` 等节点，其余一律拒绝。这是消除 LLM 算术幻觉（hallucination）最直接的办法：LLM 只决定"调什么工具传什么参数"，不让它心算。
-
----
-
-## 项目状态与免责声明
-
-> ⚠️ **本项目仍在开发中，当前生成的 `report.md` 不能作为投资判断依据。**
->
-> - **抽取阶段**：DeepSeek-chat 对前瞻性断言的识别约 80% 准确，剩余 20% 含误抽（把当期事实当成承诺）或漏抽。
-> - **数值校验阶段**：`financials.db` 仍存在已知的"单位归一"（unit-normalization）bug——FY2024 营收量级与公开披露数据相差约 5 倍（详见 [design.md §14.1](design.md#141-已知-issue-unit-normalization-bug高优先级)）；这条会污染所有"持平 / 增幅 X%" 类 claim 的判定结果。
-> - **整体可信度评分**：分母只算"已兑现 / 部分兑现 / 没兑现"三类，不惩罚数据缺失，但单一公司样本下评分波动很大，不具备跨公司可比性。
->
-> 后续凡是出现中芯国际报告数字（如"整体可信度 58"、verdict 分布）都来自当前未修 bug 的版本，仅作为 **流水线跑通的演示**，不是对中芯国际管理层的真实评价。
 
 ---
 
@@ -251,20 +276,29 @@ tests/                       # 100+ pytest，按 phase 分子目录
 ## 开发
 
 ```bash
-# 安装 dev 依赖
+# 安装 dev 依赖（含 ruff / pytest / pre-commit）
 pip install -e ".[dev]"
 
-# 跑测试
-pytest -x
+# 装 git pre-commit hook（每次 commit 前自动 ruff format + ruff check）
+pre-commit install
 
-# 跑代码检查
-ruff check walk_the_talk/
+# 跑全套测试 + 覆盖率
+pytest -v --cov=walk_the_talk --cov-report=term-missing
 
-# SMIC 端到端跑通验证（需 .env 里有 DEEPSEEK_API_KEY）
+# 单独跑 lint
+ruff check .
+ruff format --check .
+
+# 端到端跑通验证（需 .env 里有 DEEPSEEK_API_KEY）
 ./scripts/run_all.sh
 ```
 
-详细架构决策、prompt 设计、验证方法见仓库根的 [`design.md`](design.md)；版本变更见 [`CHANGELOG.md`](CHANGELOG.md)。
+每次 push 与 PR 都会触发 [GitHub Actions CI](.github/workflows/ci.yml)：
+
+- **lint** job（~30 秒）：`ruff check` + `ruff format --check`
+- **test** job（Python 3.10 / 3.11 / 3.12 三档矩阵）：装依赖 + `pytest -v --cov`，覆盖率 XML 落 artifacts
+
+详细架构决策、prompt 设计、验证方法见 [`design.md`](design.md)；贡献流程见 [`CONTRIBUTING.md`](CONTRIBUTING.md)；版本变更见 [`CHANGELOG.md`](CHANGELOG.md)。
 
 ---
 

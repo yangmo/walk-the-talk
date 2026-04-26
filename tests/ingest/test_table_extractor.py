@@ -45,13 +45,12 @@ def test_normalize_strips_tail_note():
 def test_lookup_canonical_basic():
     assert lookup_canonical("一、营业总收入", StatementType.INCOME) == "total_revenue"
     assert lookup_canonical("货币资金", StatementType.BALANCE) == "cash"
-    assert lookup_canonical(
-        "购建固定资产、无形资产和其他长期资产支付的现金", StatementType.CASHFLOW
-    ) == "capex"
+    assert (
+        lookup_canonical("购建固定资产、无形资产和其他长期资产支付的现金", StatementType.CASHFLOW) == "capex"
+    )
     assert lookup_canonical("不存在的科目", StatementType.INCOME) is None
     # 错位查（cashflow 关键词查 income）应当失败
-    assert lookup_canonical("购建固定资产、无形资产和其他长期资产支付的现金",
-                            StatementType.INCOME) is None
+    assert lookup_canonical("购建固定资产、无形资产和其他长期资产支付的现金", StatementType.INCOME) is None
 
 
 def test_parse_unit_from_caption():
@@ -63,9 +62,9 @@ def test_parse_unit_from_caption():
 
 def test_parse_numeric_variants():
     assert parse_numeric("1,234.56") == 1234.56
-    assert parse_numeric("1，234.56") == 1234.56          # 全角逗号
-    assert parse_numeric("(1,234)") == -1234.0            # 会计括号
-    assert parse_numeric("（1,234）") == -1234.0          # 全角括号
+    assert parse_numeric("1，234.56") == 1234.56  # 全角逗号
+    assert parse_numeric("(1,234)") == -1234.0  # 会计括号
+    assert parse_numeric("（1,234）") == -1234.0  # 全角括号
     assert parse_numeric("－123") == -123.0
     assert parse_numeric("−45.67") == -45.67
     assert parse_numeric("-89") == -89.0
@@ -185,7 +184,9 @@ def test_classify_uses_table_caption_field():
         ["资产总计", "5,000", "4,500"],
     ]
     tbl = Table(
-        index=0, markdown="", raw_2d=rows,
+        index=0,
+        markdown="",
+        raw_2d=rows,
         bbox_anchor="TABLE_PLACEHOLDER_0",
         caption="合并资产负债表  单位：千元 币种：人民币",
     )
@@ -240,7 +241,7 @@ def test_extract_balance_with_unit_thousand():
 def test_extract_income_picks_correct_year_column():
     """有 2025 / 2024 两列，extract 应取 2025 那列。"""
     rows = [
-        ["项目", "2024年度", "2025年度"],   # 顺序倒一下
+        ["项目", "2024年度", "2025年度"],  # 顺序倒一下
         ["一、营业总收入", "9,000", "10,000"],
         ["营业成本", "5,500", "6,000"],
         ["研发费用", "700", "800"],
@@ -254,7 +255,7 @@ def test_extract_income_picks_correct_year_column():
         source_path="x.html",
     )
     by = {ln.line_item_canonical: ln.value for ln in lines}
-    assert by["total_revenue"] == 10_000.0   # 不是 9,000
+    assert by["total_revenue"] == 10_000.0  # 不是 9,000
     assert by["net_profit"] == 1_200.0
 
 
@@ -284,7 +285,7 @@ def test_extract_handles_paren_negative():
         ["项目", "2025年度", "2024年度"],
         ["营业收入", "10,000", "9,000"],
         ["营业成本", "6,000", "5,500"],
-        ["营业利润", "(500)", "(300)"],     # 亏损
+        ["营业利润", "(500)", "(300)"],  # 亏损
         ["净利润", "(800)", "(500)"],
         ["利润总额", "(700)", "(450)"],
     ]
@@ -305,12 +306,15 @@ def test_extract_returns_empty_for_other_table():
         ["研发人员", "500"],
         ["生产人员", "1500"],
     ]
-    assert extract_lines_from_table(
-        _mk_table(rows),
-        fiscal_year=2025,
-        ticker="688981",
-        source_path="x.html",
-    ) == []
+    assert (
+        extract_lines_from_table(
+            _mk_table(rows),
+            fiscal_year=2025,
+            ticker="688981",
+            source_path="x.html",
+        )
+        == []
+    )
 
 
 # ============== extract_from_report：first-win 去重 ==============
@@ -412,14 +416,15 @@ def test_extract_from_report_first_win_preserves_consol_vs_parent():
         encoding="utf-8",
         sections=[],
         tables=[
-            Table(index=0, markdown="", raw_2d=consol_income, bbox_anchor="TABLE_0",
-                  caption="合并利润表"),
+            Table(index=0, markdown="", raw_2d=consol_income, bbox_anchor="TABLE_0", caption="合并利润表"),
             # 中间的 OTHER 表打断主表上下文，避免被当成 continuation
-            Table(index=1, markdown="",
-                  raw_2d=[["人员构成", "数量"], ["研发人员", "500"], ["生产人员", "1500"]],
-                  bbox_anchor="TABLE_1"),
-            Table(index=2, markdown="", raw_2d=parent_income, bbox_anchor="TABLE_2",
-                  caption="母公司利润表"),
+            Table(
+                index=1,
+                markdown="",
+                raw_2d=[["人员构成", "数量"], ["研发人员", "500"], ["生产人员", "1500"]],
+                bbox_anchor="TABLE_1",
+            ),
+            Table(index=2, markdown="", raw_2d=parent_income, bbox_anchor="TABLE_2", caption="母公司利润表"),
         ],
     )
     lines = extract_from_report(rp)
@@ -435,8 +440,14 @@ def test_extract_from_report_first_win_preserves_consol_vs_parent():
 # ============== FinancialsStore ==============
 
 
-def _mk_line(canonical: str, value: float, st: StatementType = StatementType.INCOME,
-             fy: str = "FY2025", consol: bool = True, ticker: str = "T") -> FinancialLine:
+def _mk_line(
+    canonical: str,
+    value: float,
+    st: StatementType = StatementType.INCOME,
+    fy: str = "FY2025",
+    consol: bool = True,
+    ticker: str = "T",
+) -> FinancialLine:
     return FinancialLine(
         ticker=ticker,
         fiscal_period=fy,
@@ -454,10 +465,12 @@ def _mk_line(canonical: str, value: float, st: StatementType = StatementType.INC
 def test_store_upsert_and_get_value(tmp_path: Path):
     db = tmp_path / "fin.db"
     with FinancialsStore(db) as store:
-        n = store.upsert_lines([
-            _mk_line("revenue", 1_000.0),
-            _mk_line("net_profit", 100.0),
-        ])
+        n = store.upsert_lines(
+            [
+                _mk_line("revenue", 1_000.0),
+                _mk_line("net_profit", 100.0),
+            ]
+        )
         assert n == 2
         assert store.count() == 2
         assert store.get_value("T", "FY2025", "revenue") == 1_000.0
@@ -476,10 +489,12 @@ def test_store_upsert_replaces_existing(tmp_path: Path):
 def test_store_consolidated_vs_parent_coexist(tmp_path: Path):
     db = tmp_path / "fin.db"
     with FinancialsStore(db) as store:
-        store.upsert_lines([
-            _mk_line("revenue", 1_000.0, consol=True),
-            _mk_line("revenue", 800.0, consol=False),
-        ])
+        store.upsert_lines(
+            [
+                _mk_line("revenue", 1_000.0, consol=True),
+                _mk_line("revenue", 800.0, consol=False),
+            ]
+        )
         assert store.count() == 2
         assert store.get_value("T", "FY2025", "revenue", is_consolidated=True) == 1_000.0
         assert store.get_value("T", "FY2025", "revenue", is_consolidated=False) == 800.0
@@ -488,12 +503,14 @@ def test_store_consolidated_vs_parent_coexist(tmp_path: Path):
 def test_store_get_series(tmp_path: Path):
     db = tmp_path / "fin.db"
     with FinancialsStore(db) as store:
-        store.upsert_lines([
-            _mk_line("revenue", 100.0, fy="FY2022"),
-            _mk_line("revenue", 200.0, fy="FY2023"),
-            _mk_line("revenue", 300.0, fy="FY2024"),
-            _mk_line("revenue", 400.0, fy="FY2025"),
-        ])
+        store.upsert_lines(
+            [
+                _mk_line("revenue", 100.0, fy="FY2022"),
+                _mk_line("revenue", 200.0, fy="FY2023"),
+                _mk_line("revenue", 300.0, fy="FY2024"),
+                _mk_line("revenue", 400.0, fy="FY2025"),
+            ]
+        )
         s = store.get_series("T", "revenue")
         assert s == {"FY2022": 100.0, "FY2023": 200.0, "FY2024": 300.0, "FY2025": 400.0}
         s2 = store.get_series("T", "revenue", fiscal_periods=["FY2024", "FY2025"])
@@ -503,27 +520,30 @@ def test_store_get_series(tmp_path: Path):
 def test_store_query_by_period(tmp_path: Path):
     db = tmp_path / "fin.db"
     with FinancialsStore(db) as store:
-        store.upsert_lines([
-            _mk_line("revenue", 100.0, st=StatementType.INCOME, fy="FY2024"),
-            _mk_line("net_profit", 10.0, st=StatementType.INCOME, fy="FY2024"),
-            _mk_line("cash", 50.0, st=StatementType.BALANCE, fy="FY2024"),
-            _mk_line("revenue", 200.0, st=StatementType.INCOME, fy="FY2025"),
-        ])
+        store.upsert_lines(
+            [
+                _mk_line("revenue", 100.0, st=StatementType.INCOME, fy="FY2024"),
+                _mk_line("net_profit", 10.0, st=StatementType.INCOME, fy="FY2024"),
+                _mk_line("cash", 50.0, st=StatementType.BALANCE, fy="FY2024"),
+                _mk_line("revenue", 200.0, st=StatementType.INCOME, fy="FY2025"),
+            ]
+        )
         rows_24 = store.query("T", fiscal_period="FY2024")
         assert len(rows_24) == 3
-        rows_24_inc = store.query("T", fiscal_period="FY2024",
-                                   statement_type=StatementType.INCOME)
+        rows_24_inc = store.query("T", fiscal_period="FY2024", statement_type=StatementType.INCOME)
         assert len(rows_24_inc) == 2
 
 
 def test_store_list_periods(tmp_path: Path):
     db = tmp_path / "fin.db"
     with FinancialsStore(db) as store:
-        store.upsert_lines([
-            _mk_line("revenue", 100.0, fy="FY2023"),
-            _mk_line("revenue", 200.0, fy="FY2025"),
-            _mk_line("revenue", 150.0, fy="FY2024"),
-        ])
+        store.upsert_lines(
+            [
+                _mk_line("revenue", 100.0, fy="FY2023"),
+                _mk_line("revenue", 200.0, fy="FY2025"),
+                _mk_line("revenue", 150.0, fy="FY2024"),
+            ]
+        )
         assert store.list_periods("T") == ["FY2023", "FY2024", "FY2025"]
 
 
@@ -555,9 +575,17 @@ def test_smic_2025_extract_and_store(tmp_path: Path, smic_html_path: Path):
     # 必须能抽到这些核心 canonical
     canons = {ln.line_item_canonical for ln in lines}
     must_have = {
-        "total_assets", "total_equity", "total_liabilities", "cash", "fixed_assets",
-        "revenue", "net_profit", "rd_expense", "total_revenue",
-        "ocf", "capex",
+        "total_assets",
+        "total_equity",
+        "total_liabilities",
+        "cash",
+        "fixed_assets",
+        "revenue",
+        "net_profit",
+        "rd_expense",
+        "total_revenue",
+        "ocf",
+        "capex",
     }
     missing = must_have - canons
     assert not missing, f"missing canonical: {missing}"
@@ -589,7 +617,7 @@ def test_smic_2025_extract_and_store(tmp_path: Path, smic_html_path: Path):
         assert 1e11 < te < 4e11, f"total_equity={te}"
         assert 5e10 < tl < 2e11, f"total_liabilities={tl}"
         # 资产 = 负债 + 权益（差额 < 0.1%）
-        assert abs(ta - (tl + te)) / ta < 1e-3, f"BS not balanced: A={ta} L+E={tl+te}"
+        assert abs(ta - (tl + te)) / ta < 1e-3, f"BS not balanced: A={ta} L+E={tl + te}"
 
         # 现金流量表：OCF 正、CapEx 正（绝对值都很大）
         assert ocf > 1e10, f"ocf={ocf}"

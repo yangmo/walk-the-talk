@@ -37,9 +37,9 @@ def test_discover_years_sorted(tmp_path: Path):
     (tmp_path / "2022.html").write_text("x")
     (tmp_path / "2023.html").write_text("x")
     # 不该被识别的
-    (tmp_path / "1999.html").write_text("x")          # 1990< 但小于 2000，正则不匹配
+    (tmp_path / "1999.html").write_text("x")  # 1990< 但小于 2000，正则不匹配
     (tmp_path / "notes.txt").write_text("x")
-    (tmp_path / "draft_2025.html").write_text("x")    # 前缀不匹配
+    (tmp_path / "draft_2025.html").write_text("x")  # 前缀不匹配
     (tmp_path / "subdir").mkdir()
     (tmp_path / "subdir" / "2099.html").write_text("x")
 
@@ -121,7 +121,7 @@ def _make_settings(data_dir: Path) -> IngestSettings:
         data_dir=data_dir,
         ticker="688981",
         company="中芯国际",
-        embedder_name="hash",   # 端到端用 hash，免下载模型
+        embedder_name="hash",  # 端到端用 hash，免下载模型
     )
 
 
@@ -243,9 +243,7 @@ def test_cli_ingest_missing_required(tmp_path: Path):
 
 
 def test_cli_ingest_missing_dir():
-    result = runner.invoke(
-        app, ["ingest", "/nonexistent/path/zzz", "-t", "X", "-c", "X"]
-    )
+    result = runner.invoke(app, ["ingest", "/nonexistent/path/zzz", "-t", "X", "-c", "X"])
     assert result.exit_code != 0
 
 
@@ -256,9 +254,12 @@ def test_cli_ingest_e2e_hash(smic_data_dir: Path):
         [
             "ingest",
             str(smic_data_dir),
-            "--ticker", "688981",
-            "--company", "中芯国际",
-            "--embedder", "hash",
+            "--ticker",
+            "688981",
+            "--company",
+            "中芯国际",
+            "--embedder",
+            "hash",
         ],
     )
     assert result.exit_code == 0, f"stdout:\n{result.stdout}\nexc:\n{result.exception}"

@@ -51,9 +51,7 @@ def pick_failed_highlights(
     anomaly_checker: AnomalyChecker | None = None,
 ) -> list[HighlightItem]:
     """挑出 FAILED 高亮。pairs 是 (Claim, latest VerificationRecord) 列表。"""
-    failed = [
-        (c, r) for c, r in pairs if r.verdict == Verdict.FAILED
-    ]
+    failed = [(c, r) for c, r in pairs if r.verdict == Verdict.FAILED]
     failed.sort(
         key=lambda x: (x[0].materiality_score, x[1].fiscal_year),
         reverse=True,
@@ -74,8 +72,7 @@ def pick_verified_highlights(
     verified = [
         (c, r)
         for c, r in pairs
-        if r.verdict == Verdict.VERIFIED
-        and c.specificity_score >= VERIFIED_SPECIFICITY_THRESHOLD
+        if r.verdict == Verdict.VERIFIED and c.specificity_score >= VERIFIED_SPECIFICITY_THRESHOLD
     ]
     verified.sort(
         key=lambda x: (x[0].specificity_score, x[0].materiality_score),
@@ -161,7 +158,7 @@ class AnomalyChecker:
         if ratio >= self.magnitude_ratio or ratio <= 1 / self.magnitude_ratio:
             return (
                 f"actual={actual_f:.4g} 与同公司 {metric} 近年参考均值 "
-                f"{ref_mean:.4g} 的量级差 {max(ratio, 1/ratio):.1f}x"
+                f"{ref_mean:.4g} 的量级差 {max(ratio, 1 / ratio):.1f}x"
             )
         return None
 

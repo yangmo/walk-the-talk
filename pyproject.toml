@@ -5,41 +5,66 @@ build-backend = "hatchling.build"
 [project]
 name = "walk-the-talk"
 version = "0.1.0"
-description = "回溯上市公司年报中管理层的可验证断言，用后续年份的事实回头打分"
+description = "回溯上市公司年报中管理层的可验证断言，用后续年份的事实回头打分（RAG + LangGraph + DeepSeek）"
 requires-python = ">=3.10"
-authors = [{ name = "alfy" }]
+authors = [{ name = "Mo Yang", email = "yangmo5000@gmail.com" }]
 readme = "README.md"
+license = { file = "LICENSE" }
+keywords = [
+    "rag",
+    "retrieval-augmented-generation",
+    "langgraph",
+    "llm-agent",
+    "financial-analysis",
+    "annual-report",
+    "chinese-nlp",
+    "deepseek",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Financial",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Text Processing :: Linguistic",
+    "Natural Language :: Chinese (Simplified)",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+]
 
 dependencies = [
-    # HTML parsing
+    # HTML 解析
     "beautifulsoup4>=4.12",
     "lxml>=5.0",
     "chardet>=5.2",
 
-    # Embedding & vector store
+    # 向量化与向量库
     "sentence-transformers>=2.7",
     "chromadb>=0.5",
 
-    # Chinese tokenization & BM25
+    # 中文分词与 BM25
     "rank-bm25>=0.2.2",
     "jieba>=0.42",
 
-    # Orchestration
+    # 编排
     "langgraph>=0.2",
     "langgraph-checkpoint-sqlite>=2.0",
 
-    # Data models
+    # 数据模型
     "pydantic>=2.6",
 
-    # CLI & config
+    # CLI 与配置
     "typer>=0.12",
     "pyyaml>=6.0",
     "python-dotenv>=1.0",
 
-    # LLM (used in Phase 2-3)
+    # LLM
     "openai>=1.40",
 
-    # Logging
+    # 终端日志
     "rich>=13.7",
 ]
 
@@ -47,8 +72,16 @@ dependencies = [
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
+    "pytest-cov>=5.0",
     "ruff>=0.5",
+    "pre-commit>=3.7",
 ]
+
+[project.urls]
+Homepage = "https://github.com/yangmo/walk-the-talk"
+Repository = "https://github.com/yangmo/walk-the-talk"
+Issues = "https://github.com/yangmo/walk-the-talk/issues"
+Changelog = "https://github.com/yangmo/walk-the-talk/blob/main/CHANGELOG.md"
 
 [project.scripts]
 walk-the-talk = "walk_the_talk.cli:app"
@@ -56,6 +89,8 @@ walk-the-talk = "walk_the_talk.cli:app"
 [tool.hatch.build.targets.wheel]
 packages = ["walk_the_talk"]
 
+
+# ============== ruff ==============
 [tool.ruff]
 line-length = 110
 target-version = "py310"
@@ -63,15 +98,52 @@ target-version = "py310"
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP"]
 ignore = [
-    "E501",   # line-too-long: we prefer readable lines over hard 79/110 cap
-    "B008",   # function-call-in-argument-default: Typer Option/Argument
-              # rely on this pattern; whitelisting just for typer would be noisier.
+    "E501",   # line-too-long: 我们偏好可读，不强制 79/110 列
+    "B008",   # function-call-in-argument-default: typer Option/Argument 标准写法
+              # 单独白名单 typer 反而引入更多噪音。
 ]
 
-# Treat these factory calls as immutable for B008 (kept for clarity even
-# though B008 is ignored above — useful if we ever flip B008 back on).
+# 仍把 typer 工厂调用标记成 immutable（B008 关掉了也保留这条作显式声明）。
 [tool.ruff.lint.flake8-bugbear]
 extend-immutable-calls = [
     "typer.Argument",
     "typer.Option",
+]
+
+
+# ============== pytest ==============
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+addopts = [
+    "-ra",                   # short summary for all non-pass results
+    "--strict-markers",      # 未声明的 marker 直接报错，避免拼写错误
+    "--strict-config",       # 配置 key 写错也直接报错
+]
+filterwarnings = [
+    "error",                 # 默认把 warning 升级成 error，避免被忽略
+    # 第三方库的已知噪音 warning 在这里降级
+    "ignore::DeprecationWarning:chromadb.*",
+    "ignore::DeprecationWarning:google.*",
+    "ignore::PendingDeprecationWarning",
+]
+
+
+# ============== coverage ==============
+[tool.coverage.run]
+source = ["walk_the_talk"]
+branch = true
+omit = [
+    "walk_the_talk/__main__.py",   # 留作未来 entry point
+]
+
+[tool.coverage.report]
+precision = 1
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "raise NotImplementedError",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
 ]

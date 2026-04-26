@@ -66,10 +66,7 @@ def postprocess_claims(
         if _is_expired(c):
             stats.dropped_expired += 1
             continue
-        if (
-            c.specificity_score <= trivial_specificity_max
-            and c.materiality_score <= trivial_materiality_max
-        ):
+        if c.specificity_score <= trivial_specificity_max and c.materiality_score <= trivial_materiality_max:
             stats.dropped_trivial += 1
             continue
         survivors.append(c)

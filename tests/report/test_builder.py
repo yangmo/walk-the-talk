@@ -1,4 +1,5 @@
 """build_report / sections / highlights 的端到端 smoke + 关键 section 校验。"""
+
 from __future__ import annotations
 
 from walk_the_talk.core.enums import ClaimStatus, ClaimType, SectionCanonical, Verdict
@@ -336,26 +337,46 @@ def test_build_report_realistic_mix() -> None:
     """混合多种 verdict / 多年 claim / 不同 claim_type 的真实场景。"""
     pairs = [
         # FY2024 出的 claim，FY2025 报告里验证
-        (_mk_claim("R-FY2024-001", ctype=ClaimType.QUANTITATIVE_FORECAST,
-                   fy=2024, materiality=5, specificity=4,
-                   text="2025 年营收增速达到可比同业平均值"),
-         _mk_record(Verdict.FAILED, fy=2025, target=0.05, actual=-0.7876)),
-        (_mk_claim("R-FY2024-002", ctype=ClaimType.CAPITAL_ALLOCATION,
-                   fy=2024, materiality=5, specificity=5,
-                   text="FY2025 capex 与上一年持平"),
-         _mk_record(Verdict.FAILED, fy=2025, target=0.0, actual=0.0988)),
-        (_mk_claim("R-FY2023-001", ctype=ClaimType.QUANTITATIVE_FORECAST,
-                   fy=2023, materiality=4, specificity=4),
-         _mk_record(Verdict.VERIFIED, fy=2024)),
-        (_mk_claim("R-FY2023-002", ctype=ClaimType.STRATEGIC_COMMITMENT,
-                   fy=2023, materiality=3, specificity=2),
-         _mk_record(Verdict.NOT_VERIFIABLE, fy=2024)),
-        (_mk_claim("R-FY2022-001", ctype=ClaimType.CAPITAL_ALLOCATION,
-                   fy=2022, materiality=4),
-         _mk_record(Verdict.PARTIALLY_VERIFIED, fy=2023)),
+        (
+            _mk_claim(
+                "R-FY2024-001",
+                ctype=ClaimType.QUANTITATIVE_FORECAST,
+                fy=2024,
+                materiality=5,
+                specificity=4,
+                text="2025 年营收增速达到可比同业平均值",
+            ),
+            _mk_record(Verdict.FAILED, fy=2025, target=0.05, actual=-0.7876),
+        ),
+        (
+            _mk_claim(
+                "R-FY2024-002",
+                ctype=ClaimType.CAPITAL_ALLOCATION,
+                fy=2024,
+                materiality=5,
+                specificity=5,
+                text="FY2025 capex 与上一年持平",
+            ),
+            _mk_record(Verdict.FAILED, fy=2025, target=0.0, actual=0.0988),
+        ),
+        (
+            _mk_claim(
+                "R-FY2023-001", ctype=ClaimType.QUANTITATIVE_FORECAST, fy=2023, materiality=4, specificity=4
+            ),
+            _mk_record(Verdict.VERIFIED, fy=2024),
+        ),
+        (
+            _mk_claim(
+                "R-FY2023-002", ctype=ClaimType.STRATEGIC_COMMITMENT, fy=2023, materiality=3, specificity=2
+            ),
+            _mk_record(Verdict.NOT_VERIFIABLE, fy=2024),
+        ),
+        (
+            _mk_claim("R-FY2022-001", ctype=ClaimType.CAPITAL_ALLOCATION, fy=2022, materiality=4),
+            _mk_record(Verdict.PARTIALLY_VERIFIED, fy=2023),
+        ),
         # 在途
-        (_mk_claim("R-FY2024-003", fy=2024, horizon_end="FY2026"),
-         _mk_record(Verdict.PREMATURE, fy=2025)),
+        (_mk_claim("R-FY2024-003", fy=2024, horizon_end="FY2026"), _mk_record(Verdict.PREMATURE, fy=2025)),
     ]
     cs, vs = _mk_store(*pairs)
     md = build_report(cs, vs)

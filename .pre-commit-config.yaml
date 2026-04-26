@@ -1,0 +1,45 @@
+# Pre-commit hooks for walk-the-talk.
+#
+# 安装：
+#     pip install pre-commit             # 已在 [dev] extra 里
+#     pre-commit install                  # 装 git hook
+#
+# 手动跑：
+#     pre-commit run --all-files          # 全仓
+#     pre-commit run                      # 只跑暂存
+#
+# 升级所有 hook 到最新：
+#     pre-commit autoupdate
+
+repos:
+  # ============== ruff：format + lint ==============
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.9
+    hooks:
+      - id: ruff           # ruff check --fix
+        args: [--fix]
+      - id: ruff-format    # ruff format
+
+  # ============== 通用文件卫生 ==============
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: end-of-file-fixer            # 文件末尾保证一个换行
+      - id: trailing-whitespace          # 行尾空格
+        args: [--markdown-linebreak-ext=md]
+      - id: check-yaml                   # yaml 语法
+      - id: check-toml                   # toml 语法（pyproject）
+      - id: check-merge-conflict         # 防止 <<<<<< 漏到 commit
+      - id: check-added-large-files      # >500KB 的文件需要明确放行
+        args: [--maxkb=500]
+        exclude: ^tests/fixtures/        # 但 fixtures/ 里的年报 HTML 例外
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: detect-private-key           # 防误提交 SSH/API 私钥
+
+# 全局配置
+default_language_version:
+  python: python3.11
+
+# CI 上 pre-commit 也会跑（用 pre-commit.ci 服务时），这里限定到我们关心的文件
+files: ^(walk_the_talk|tests|scripts|\.github|.+\.toml|.+\.md)

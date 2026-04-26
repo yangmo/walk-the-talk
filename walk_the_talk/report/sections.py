@@ -22,21 +22,27 @@ def render_scoreboard(
 ) -> str:
     """3 行评分表。某子集 None 时显示"—"且备注解释为什么没分。"""
     rows = []
-    rows.append(_score_row(
-        "整体可信度",
-        overall,
-        "(verified*1.0 + partially_verified*0.5 + failed*0.0) / (V+P+F) × 100",
-    ))
-    rows.append(_score_row(
-        "量化承诺命中率",
-        quantitative,
-        "quantitative_forecast 类型 claim 子集，公式同上",
-    ))
-    rows.append(_score_row(
-        "资本配置准确度",
-        capital_alloc,
-        "capital_allocation 类型 claim 子集，公式同上",
-    ))
+    rows.append(
+        _score_row(
+            "整体可信度",
+            overall,
+            "(verified*1.0 + partially_verified*0.5 + failed*0.0) / (V+P+F) × 100",
+        )
+    )
+    rows.append(
+        _score_row(
+            "量化承诺命中率",
+            quantitative,
+            "quantitative_forecast 类型 claim 子集，公式同上",
+        )
+    )
+    rows.append(
+        _score_row(
+            "资本配置准确度",
+            capital_alloc,
+            "capital_allocation 类型 claim 子集，公式同上",
+        )
+    )
     body = T.SCOREBOARD_HEADER + "".join(rows)
     if overall is None:
         body += T.SCOREBOARD_NO_DATA_NOTE
@@ -84,14 +90,14 @@ def render_timeline(
                 continue
             parts.append(T.BUCKET_HEADER.format(emoji_label=label, n=len(items)))
             for c, r in items[:max_items_per_bucket]:
-                parts.append(T.BUCKET_ITEM.format(
-                    cid=c.claim_id,
-                    summary=_claim_summary(c, r),
-                ))
-            if len(items) > max_items_per_bucket:
                 parts.append(
-                    f"  - ... 另有 {len(items) - max_items_per_bucket} 条同类\n"
+                    T.BUCKET_ITEM.format(
+                        cid=c.claim_id,
+                        summary=_claim_summary(c, r),
+                    )
                 )
+            if len(items) > max_items_per_bucket:
+                parts.append(f"  - ... 另有 {len(items) - max_items_per_bucket} 条同类\n")
     return "".join(parts)
 
 
@@ -103,7 +109,7 @@ def _claim_summary(claim: Claim, record: VerificationRecord) -> str:
         text = text[:77] + "..."
     target = _fmt_value(record.target_value)
     actual = _fmt_value(record.actual_value)
-    parts = [f"\"{text}\""]
+    parts = [f'"{text}"']
     if target is not None and actual is not None:
         parts.append(f"目标 {target} / 实际 {actual}")
     elif actual is not None:

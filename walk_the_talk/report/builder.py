@@ -82,9 +82,7 @@ def build_report(
 
     if include_highlights:
         anomaly_checker = (
-            AnomalyChecker(fetcher=fetcher, ticker=verdict_store.ticker)
-            if fetcher is not None
-            else None
+            AnomalyChecker(fetcher=fetcher, ticker=verdict_store.ticker) if fetcher is not None else None
         )
         failed_h = pick_failed_highlights(pairs, anomaly_checker=anomaly_checker)
         verified_h = pick_verified_highlights(pairs)
@@ -139,9 +137,7 @@ def run_report(
     log = on_log or (lambda _msg: None)
 
     if not settings.claims_path.exists():
-        raise FileNotFoundError(
-            f"claims.json 不存在：{settings.claims_path}（先跑 walk-the-talk extract）"
-        )
+        raise FileNotFoundError(f"claims.json 不存在：{settings.claims_path}（先跑 walk-the-talk extract）")
     if not settings.verdicts_path.exists():
         raise FileNotFoundError(
             f"verdicts.json 不存在：{settings.verdicts_path}（先跑 walk-the-talk verify）"
@@ -187,8 +183,7 @@ def run_report(
         "n_premature": dist["premature"],
         "n_expired": dist["expired"],
         "overall_credibility": overall,
-        "current_fy": settings.current_fy
-        or _detect_current_fy(claim_store, verdict_store),
+        "current_fy": settings.current_fy or _detect_current_fy(claim_store, verdict_store),
         "report_path": str(settings.report_path),
     }
 

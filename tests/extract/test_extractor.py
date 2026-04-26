@@ -301,7 +301,7 @@ def _make_claim(
     from walk_the_talk.core.ids import canonical_key as _ck
     from walk_the_talk.core.models import Claim, Horizon, Predicate, Subject, VerificationPlan
 
-    ck = canonical_key or _ck("rd_expense_ratio", "整体", f"FY{year+1}", horizon_end)
+    ck = canonical_key or _ck("rd_expense_ratio", "整体", f"FY{year + 1}", horizon_end)
     return Claim(
         claim_id=f"688981-FY{year}-{seq:03d}",
         claim_type="quantitative_forecast",
@@ -313,7 +313,7 @@ def _make_claim(
         metric="研发投入占比",
         metric_canonical="rd_expense_ratio",
         predicate=Predicate(operator=">=", value=0.08, unit="%"),
-        horizon=Horizon(type="财年", start=f"FY{year+1}", end=horizon_end),
+        horizon=Horizon(type="财年", start=f"FY{year + 1}", end=horizon_end),
         specificity_score=spec,
         verifiability_score=4,
         materiality_score=mat,
@@ -359,11 +359,15 @@ def test_postprocess_dedup_cross_year_template():
     # 同样的 original_text + 同样的 canonical_key 才视为模板（避免误杀）
     shared_ck = "rd_expense_ratio|整体|FY2030~FY2030"
     a = _make_claim(
-        seq=1, year=2023, canonical_key=shared_ck,
+        seq=1,
+        year=2023,
+        canonical_key=shared_ck,
         original_text="本公司将在 2030 年前持续推动战略转型",
     )
     b = _make_claim(
-        seq=1, year=2024, canonical_key=shared_ck,
+        seq=1,
+        year=2024,
+        canonical_key=shared_ck,
         original_text="本公司将在 2030 年前持续推动战略转型",
     )
     out, stats = postprocess_claims([a, b])

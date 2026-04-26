@@ -24,5 +24,6 @@ __all__ = [
 def __getattr__(name: str):
     if name == "DeepSeekClient":
         from .deepseek import DeepSeekClient
+
         return DeepSeekClient
     raise AttributeError(f"module 'walk_the_talk.llm' has no attribute {name!r}")

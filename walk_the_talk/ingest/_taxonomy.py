@@ -293,7 +293,7 @@ def parse_numeric(raw: str) -> float | None:
     for p in _NEG_PREFIXES:
         if s.startswith(p):
             sign = -1.0
-            s = s[len(p):]
+            s = s[len(p) :]
             break
 
     if not _NUMERIC_OK.match(s):

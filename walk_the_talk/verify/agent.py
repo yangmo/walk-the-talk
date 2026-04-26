@@ -37,9 +37,7 @@ from typing import Any, TypedDict
 try:
     from langgraph.graph import END, START, StateGraph
 except ImportError as e:  # pragma: no cover
-    raise RuntimeError(
-        "需要 langgraph 才能跑 verify；pip install langgraph"
-    ) from e
+    raise RuntimeError("需要 langgraph 才能跑 verify；pip install langgraph") from e
 
 from ..core.enums import Verdict
 from ..core.models import Claim, Evidence, ToolCall, VerificationRecord
@@ -119,8 +117,8 @@ class _State(TypedDict, total=False):
     # 演化字段
     iter_count: int
     history: list[dict[str, Any]]
-    pending_tool: dict[str, Any] | None     # plan 决策出来要调的下一个工具
-    next_action: str                         # "tool" | "finalize" | "finalize_forced" | "plan_retry" | "end"
+    pending_tool: dict[str, Any] | None  # plan 决策出来要调的下一个工具
+    next_action: str  # "tool" | "finalize" | "finalize_forced" | "plan_retry" | "end"
     finalize_obj: dict[str, Any] | None
     final_record: VerificationRecord | None
 
@@ -469,9 +467,7 @@ def _try_chat(
     stats: dict[str, int],
 ) -> tuple[dict[str, Any] | None, str | None]:
     """单次 LLM 调用 + JSON 解析。"""
-    response_format: dict[str, Any] | None = (
-        {"type": "json_object"} if json_mode else None
-    )
+    response_format: dict[str, Any] | None = {"type": "json_object"} if json_mode else None
     # cache_extras 由 chat 内部并入 cache key（若 client 支持），
     # 但当前 DeepSeekClient 的 cache key 只看 model+messages+(temperature/max_tokens/response_format)。
     # 这里把 cache_extras 注入到一个 dummy assistant-style 字段会污染 prompt，
@@ -661,9 +657,7 @@ def _extract_error(result: Any) -> str | None:
     return None
 
 
-def _collect_evidence(
-    history: list[dict[str, Any]], referenced_ids: list[Any]
-) -> list[Evidence]:
+def _collect_evidence(history: list[dict[str, Any]], referenced_ids: list[Any]) -> list[Evidence]:
     """从 query_chunks 历史里抽出被 LLM 在 finalize 引用的 chunk 作为 Evidence。"""
     if not referenced_ids:
         return []

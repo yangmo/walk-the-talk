@@ -42,6 +42,7 @@ TABLE_INLINE_RE = re.compile(r"\[\[TABLE_PLACEHOLDER_(\d+)\]\]")
 @dataclass
 class _Buffer:
     """累积段落到目标长度后吐 chunk。"""
+
     parts: list[str]
     refs: list[str]
 
@@ -71,6 +72,20 @@ class _Buffer:
 # ============== 切分原语 ==============
 
 
+def _flush_buf(buf: list[str], out: list[str]) -> None:
+    """把 buf 里累积的非占位符行 join 成一段塞进 out，并清空 buf。
+
+    被 ``_split_paragraphs`` 的内层循环复用；提到模块级是为了避开 ruff B023
+    （函数定义在 for-loop 内引用循环变量）的告警——虽然原闭包写法功能正确，
+    但显式参数更便于阅读与测试。
+    """
+    if buf:
+        joined = "\n".join(buf).strip()
+        if joined:
+            out.append(joined)
+        buf.clear()
+
+
 def _split_paragraphs(text: str) -> list[str]:
     """按空行切段；同时把"独占一行的表格占位符"也作为单独段落分出来。"""
     text = text.strip()
@@ -86,21 +101,13 @@ def _split_paragraphs(text: str) -> list[str]:
         # 把段内单独成行的占位符抽出来（防止占位符被埋在长段中）
         lines = p.split("\n")
         buf: list[str] = []
-
-        def _flush_buf() -> None:
-            if buf:
-                joined = "\n".join(buf).strip()
-                if joined:
-                    out.append(joined)
-                buf.clear()
-
         for ln in lines:
             if TABLE_LINE_RE.match(ln):
-                _flush_buf()
+                _flush_buf(buf, out)
                 out.append(ln.strip())
             else:
                 buf.append(ln)
-        _flush_buf()
+        _flush_buf(buf, out)
     return out
 
 
@@ -121,7 +128,7 @@ def _split_long_paragraph(para: str, max_size: int) -> list[str]:
                 pieces.append(cur)
                 cur = ""
             for i in range(0, len(s), max_size):
-                pieces.append(s[i:i + max_size])
+                pieces.append(s[i : i + max_size])
             continue
         if len(cur) + len(s) > max_size:
             if cur:
@@ -255,18 +262,20 @@ def chunk_section(
             paragraph_seq=p_seq,
         )
         locator = f"{section.title}#{p_seq}"
-        chunks.append(Chunk(
-            chunk_id=cid,
-            ticker=ticker,
-            fiscal_period=fiscal_period,
-            section=section.title,
-            section_canonical=canonical,
-            source_path=source_path,
-            locator=locator,
-            text=text,
-            contains_table_refs=refs,
-            is_forward_looking=None,  # 留给 Phase 2 classifier 填
-        ))
+        chunks.append(
+            Chunk(
+                chunk_id=cid,
+                ticker=ticker,
+                fiscal_period=fiscal_period,
+                section=section.title,
+                section_canonical=canonical,
+                source_path=source_path,
+                locator=locator,
+                text=text,
+                contains_table_refs=refs,
+                is_forward_looking=None,  # 留给 Phase 2 classifier 填
+            )
+        )
     return chunks
 
 
@@ -309,13 +318,15 @@ def chunk_report(
     """把整个 ParsedReport 切成 chunks（跨章节 chunk_id 全局唯一）。"""
     chunks: list[Chunk] = []
     for section in report.sections:
-        chunks.extend(chunk_section(
-            section,
-            ticker=report.ticker,
-            fiscal_year=report.fiscal_year,
-            source_path=report.source_path,
-            target_size=target_size,
-            max_size=max_size,
-            min_size=min_size,
-        ))
+        chunks.extend(
+            chunk_section(
+                section,
+                ticker=report.ticker,
+                fiscal_year=report.fiscal_year,
+                source_path=report.source_path,
+                target_size=target_size,
+                max_size=max_size,
+                min_size=min_size,
+            )
+        )
     return chunks

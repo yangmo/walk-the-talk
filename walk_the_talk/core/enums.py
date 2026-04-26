@@ -55,35 +55,35 @@ class ClaimStatus(StrEnum):
 class SectionCanonical(StrEnum):
     """章节归一化分类。手维护映射表把原文章节名映射到这里。"""
 
-    MGMT_LETTER = "mgmt_letter"           # 致股东的信 / 董事长致辞
-    MDA = "mda"                            # 管理层讨论与分析
-    OUTLOOK = "outlook"                    # 公司未来发展展望（mda 子项可独立）
-    RISK = "risk"                          # 风险因素
-    GUIDANCE = "guidance"                  # 业绩指引（少见单列）
-    BOARD_REPORT = "board_report"          # 董事会报告
-    GOVERNANCE = "governance"              # 公司治理
-    ESG = "esg"                            # 环境与社会
-    NOTES = "notes"                        # 财务报告附注
-    SHARES = "shares"                      # 股份变动
-    LEGAL_TEMPLATE = "legal_template"      # 重要事项 / 释义 / 备查文件等模板章节
+    MGMT_LETTER = "mgmt_letter"  # 致股东的信 / 董事长致辞
+    MDA = "mda"  # 管理层讨论与分析
+    OUTLOOK = "outlook"  # 公司未来发展展望（mda 子项可独立）
+    RISK = "risk"  # 风险因素
+    GUIDANCE = "guidance"  # 业绩指引（少见单列）
+    BOARD_REPORT = "board_report"  # 董事会报告
+    GOVERNANCE = "governance"  # 公司治理
+    ESG = "esg"  # 环境与社会
+    NOTES = "notes"  # 财务报告附注
+    SHARES = "shares"  # 股份变动
+    LEGAL_TEMPLATE = "legal_template"  # 重要事项 / 释义 / 备查文件等模板章节
     OTHER = "other"
 
 
 class StatementType(StrEnum):
     """财务表类型。"""
 
-    INCOME = "income"        # 利润表
-    BALANCE = "balance"      # 资产负债表
-    CASHFLOW = "cashflow"    # 现金流量表
-    SEGMENT = "segment"      # 分部信息
-    RD = "rd"                # 研发投入分项
-    CAPEX = "capex"          # 资本开支
+    INCOME = "income"  # 利润表
+    BALANCE = "balance"  # 资产负债表
+    CASHFLOW = "cashflow"  # 现金流量表
+    SEGMENT = "segment"  # 分部信息
+    RD = "rd"  # 研发投入分项
+    CAPEX = "capex"  # 资本开支
     OTHER = "other"
 
 
 class ReportType(StrEnum):
     ANNUAL = "annual"
-    SEMI = "semi"      # v2
+    SEMI = "semi"  # v2
     Q1 = "q1"
     Q2 = "q2"
     Q3 = "q3"

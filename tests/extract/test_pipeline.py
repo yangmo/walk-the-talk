@@ -32,14 +32,21 @@ for _m in ("chromadb", "openai", "jieba", "rank_bm25"):
 # openai stub（仅当真实 openai 未装时）补齐 DeepSeekClient / retry.py 引用的符号
 _openai_mod = sys.modules.get("openai")
 if _openai_mod is not None and not hasattr(_openai_mod, "OpenAI"):
+
     class _StubOpenAIClient:  # noqa: N801
         def __init__(self, *a, **kw): ...
+
     _openai_mod.OpenAI = _StubOpenAIClient
+
     class _OpenAIErr(Exception):
         pass
+
     for _name in (
-        "APIConnectionError", "APITimeoutError", "RateLimitError",
-        "InternalServerError", "APIStatusError",
+        "APIConnectionError",
+        "APITimeoutError",
+        "RateLimitError",
+        "InternalServerError",
+        "APIStatusError",
     ):
         if not hasattr(_openai_mod, _name):
             setattr(_openai_mod, _name, _OpenAIErr)
@@ -101,8 +108,9 @@ class MockLLM(LLMClient):
     def __init__(self, responses: dict[str, str]):
         self._responses = responses
 
-    def chat(self, messages, *, model, temperature=0.0, max_tokens=None,
-             response_format=None, timeout=60.0) -> LLMResponse:
+    def chat(
+        self, messages, *, model, temperature=0.0, max_tokens=None, response_format=None, timeout=60.0
+    ) -> LLMResponse:
         return LLMResponse(
             text=self._responses.get(model, '{"claims": []}'),
             model=model,
@@ -404,12 +412,16 @@ def test_run_extract_skips_trivial_chunks_pre_llm(monkeypatch, tmp_path):
     class CountingMock(LLMClient):
         name = "counting-mock"
 
-        def chat(self, messages, *, model, temperature=0.0, max_tokens=None,
-                 response_format=None, timeout=60.0):
+        def chat(
+            self, messages, *, model, temperature=0.0, max_tokens=None, response_format=None, timeout=60.0
+        ):
             call_count["n"] += 1
             return LLMResponse(
-                text=_GOOD_RESPONSE, model=model,
-                prompt_tokens=10, completion_tokens=20, total_tokens=30,
+                text=_GOOD_RESPONSE,
+                model=model,
+                prompt_tokens=10,
+                completion_tokens=20,
+                total_tokens=30,
                 cached=False,
             )
 

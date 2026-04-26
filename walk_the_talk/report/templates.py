@@ -65,9 +65,7 @@ HIGHLIGHT_VERIFIED_HEADER = "\n### 高亮 · 信守承诺 (VERIFIED)\n"
 HIGHLIGHT_PREMATURE_HEADER = "\n### 当前在途 (PREMATURE)\n"
 
 HIGHLIGHT_ITEM = "- **[{cid}]** {summary}{anomaly_suffix}\n"
-HIGHLIGHT_ANOMALY_SUFFIX = (
-    "\n  ⚠️ **数据存疑**：{detail}，疑为 ingest 单位/口径错位，建议人工复核"
-)
+HIGHLIGHT_ANOMALY_SUFFIX = "\n  ⚠️ **数据存疑**：{detail}，疑为 ingest 单位/口径错位，建议人工复核"
 
 # ============== 验证方法 ==============
 

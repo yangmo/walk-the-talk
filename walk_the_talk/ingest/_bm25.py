@@ -40,14 +40,16 @@ class BM25Index:
         for c in chunks:
             self.ids.append(c.chunk_id)
             self.docs.append(c.text)
-            self.metas.append({
-                "ticker": c.ticker,
-                "fiscal_period": c.fiscal_period,
-                "section": c.section,
-                "section_canonical": str(c.section_canonical),
-                "locator": c.locator,
-                "contains_table_refs": list(c.contains_table_refs),
-            })
+            self.metas.append(
+                {
+                    "ticker": c.ticker,
+                    "fiscal_period": c.fiscal_period,
+                    "section": c.section,
+                    "section_canonical": str(c.section_canonical),
+                    "locator": c.locator,
+                    "contains_table_refs": list(c.contains_table_refs),
+                }
+            )
             self._tokens.append(_tokenize(c.text))
         self._bm25 = None
 
@@ -75,18 +77,12 @@ class BM25Index:
         cand_idx = [
             i
             for i in range(len(self.ids))
-            if (
-                where is None
-                or all(self.metas[i].get(k_) == v for k_, v in where.items())
-            )
+            if (where is None or all(self.metas[i].get(k_) == v for k_, v in where.items()))
         ]
         cand_idx.sort(key=lambda i: scores[i], reverse=True)
         # 注意：rank_bm25 在 corpus 很小或某词覆盖率极高时可能给出负分，
         # 这只表示"该 token 区分度低"，不应直接排除。按分值排序取 top-k 即可。
-        return [
-            (self.ids[i], float(scores[i]), self.metas[i])
-            for i in cand_idx[:k]
-        ]
+        return [(self.ids[i], float(scores[i]), self.metas[i]) for i in cand_idx[:k]]
 
     # ============== 持久化 ==============
 
@@ -105,7 +101,7 @@ class BM25Index:
             )
 
     @classmethod
-    def load(cls, path: Path) -> "BM25Index":
+    def load(cls, path: Path) -> BM25Index:
         idx = cls()
         if not path.exists():
             return idx

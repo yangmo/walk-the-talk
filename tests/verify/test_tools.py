@@ -53,8 +53,8 @@ from walk_the_talk.verify.tools import (
         ("max(1, 2, 3)", 3),
         ("round(3.14159, 2)", 3.14),
         # 真实业务场景
-        ("(57796 - 45525) / 45525 >= 0.30", False),    # 27% 增长不到 30% 门槛
-        ("abs(7.3 - 7.5) / 7.5 <= 0.05", True),        # 偏离 ≤5%
+        ("(57796 - 45525) / 45525 >= 0.30", False),  # 27% 增长不到 30% 门槛
+        ("abs(7.3 - 7.5) / 7.5 <= 0.05", True),  # 偏离 ≤5%
     ],
 )
 def test_compute_happy_paths(expr: str, expected: Any) -> None:
@@ -85,17 +85,17 @@ def test_compute_syntax_error() -> None:
     "expr",
     [
         # 危险节点：拒绝
-        "__import__('os').system('rm -rf /')",        # Call to disallowed name
-        "open('/etc/passwd').read()",                  # disallowed function
+        "__import__('os').system('rm -rf /')",  # Call to disallowed name
+        "open('/etc/passwd').read()",  # disallowed function
         "exec('print(1)')",
         "eval('1+1')",
-        "lambda x: x",                                  # Lambda
-        "[x for x in range(10)]",                       # ListComp
-        "{1: 2}",                                       # Dict
-        "(1, 2, 3)",                                    # Tuple
-        "[1, 2, 3]",                                    # List
-        "x + 1",                                        # bare Name
-        "'hello'.upper()",                              # Attribute
+        "lambda x: x",  # Lambda
+        "[x for x in range(10)]",  # ListComp
+        "{1: 2}",  # Dict
+        "(1, 2, 3)",  # Tuple
+        "[1, 2, 3]",  # List
+        "x + 1",  # bare Name
+        "'hello'.upper()",  # Attribute
         "globals()",
         "abs(1, 2, 3)",  # 这个不报 ComputeError，但运行时 abs() 拒绝多参数 → TypeError
     ],
@@ -134,9 +134,11 @@ def fs(tmp_path: Path):
     store.upsert_lines(
         [
             FinancialLine(
-                ticker="688981", fiscal_period=f"FY{y}",
+                ticker="688981",
+                fiscal_period=f"FY{y}",
                 statement_type=StatementType.INCOME,
-                line_item="营业收入", line_item_canonical="revenue",
+                line_item="营业收入",
+                line_item_canonical="revenue",
                 value=v,
             )
             for y, v in [(2022, 4.55e10), (2023, 4.52e10), (2024, 5.78e10), (2025, 6.50e10)]
@@ -145,9 +147,11 @@ def fs(tmp_path: Path):
     store.upsert_lines(
         [
             FinancialLine(
-                ticker="688981", fiscal_period=f"FY{y}",
+                ticker="688981",
+                fiscal_period=f"FY{y}",
                 statement_type=StatementType.CAPEX,
-                line_item="资本性支出", line_item_canonical="capex",
+                line_item="资本性支出",
+                line_item_canonical="capex",
                 value=v,
             )
             for y, v in [(2024, 7.5e9), (2025, 7.3e9)]
@@ -159,7 +163,8 @@ def fs(tmp_path: Path):
 
 def test_query_financials_hit_subset(fs: FinancialsStore) -> None:
     out = query_financials(
-        fs, ticker="688981",
+        fs,
+        ticker="688981",
         line_item_canonical="revenue",
         fiscal_periods=["FY2024", "FY2025"],
     )
@@ -178,7 +183,8 @@ def test_query_financials_hit_all_periods(fs: FinancialsStore) -> None:
 def test_query_financials_line_item_not_found_with_alias(fs: FinancialsStore) -> None:
     """capex_yoy 不存在 → 返回 hint='did you mean capex?'"""
     out = query_financials(
-        fs, ticker="688981",
+        fs,
+        ticker="688981",
         line_item_canonical="capex_yoy",
         fiscal_periods=["FY2025"],
     )
@@ -191,7 +197,8 @@ def test_query_financials_line_item_not_found_with_alias(fs: FinancialsStore) ->
 def test_query_financials_line_item_not_found_no_alias(fs: FinancialsStore) -> None:
     """完全无关的 line_item → hint=None。"""
     out = query_financials(
-        fs, ticker="688981",
+        fs,
+        ticker="688981",
         line_item_canonical="完全不存在的指标XYZ",
         fiscal_periods=["FY2025"],
     )
@@ -203,7 +210,8 @@ def test_query_financials_line_item_not_found_no_alias(fs: FinancialsStore) -> N
 def test_query_financials_period_not_found(fs: FinancialsStore) -> None:
     """line_item 存在，但请求的 fiscal_periods 都没数据。"""
     out = query_financials(
-        fs, ticker="688981",
+        fs,
+        ticker="688981",
         line_item_canonical="revenue",
         fiscal_periods=["FY2030", "FY2031"],
     )
@@ -215,7 +223,9 @@ def test_query_financials_period_not_found(fs: FinancialsStore) -> None:
 def test_query_financials_wrong_ticker(fs: FinancialsStore) -> None:
     """ticker 不存在 → 走 not_found 分支，available_canonicals 空。"""
     out = query_financials(
-        fs, ticker="999999", line_item_canonical="revenue",
+        fs,
+        ticker="999999",
+        line_item_canonical="revenue",
     )
     assert "error" in out
     assert out["available_canonicals"] == []
@@ -225,7 +235,8 @@ def test_query_financials_wrong_ticker(fs: FinancialsStore) -> None:
 def test_query_financials_partial_period_hit(fs: FinancialsStore) -> None:
     """请求 FY2024 + FY2030：只命中 FY2024，应返回部分命中而不是 error。"""
     out = query_financials(
-        fs, ticker="688981",
+        fs,
+        ticker="688981",
         line_item_canonical="revenue",
         fiscal_periods=["FY2024", "FY2030"],
     )
@@ -246,24 +257,25 @@ def fs_derived(tmp_path: Path):
     store = FinancialsStore(tmp_path / "financials.db")
     # 所有金额单位为元（store 的事实约定）
     base_data = {
-        "revenue":           {2023: 4.525e10, 2024: 5.78e10,  2025: 6.732e10},
-        "cost_of_revenue":   {2023: 3.530e10, 2024: 4.71e10,  2025: 5.28e10},
-        "net_profit":        {2023: 6.4e9,    2024: 5.4e9,    2025: 7.2e9},
-        "operating_profit":  {2023: 5.0e9,    2024: 4.2e9,    2025: 6.0e9},
-        "ocf":               {2023: 2.30e10,  2024: 2.27e10,  2025: 2.01e10},
-        "capex":             {2023: 5.39e10,  2024: 5.46e10,  2025: 6.00e10},
+        "revenue": {2023: 4.525e10, 2024: 5.78e10, 2025: 6.732e10},
+        "cost_of_revenue": {2023: 3.530e10, 2024: 4.71e10, 2025: 5.28e10},
+        "net_profit": {2023: 6.4e9, 2024: 5.4e9, 2025: 7.2e9},
+        "operating_profit": {2023: 5.0e9, 2024: 4.2e9, 2025: 6.0e9},
+        "ocf": {2023: 2.30e10, 2024: 2.27e10, 2025: 2.01e10},
+        "capex": {2023: 5.39e10, 2024: 5.46e10, 2025: 6.00e10},
     }
     lines = []
     for canonical, by_year in base_data.items():
         for y, v in by_year.items():
             lines.append(
                 FinancialLine(
-                    ticker="688981", fiscal_period=f"FY{y}",
+                    ticker="688981",
+                    fiscal_period=f"FY{y}",
                     statement_type=(
-                        StatementType.CASHFLOW if canonical in ("ocf", "capex")
-                        else StatementType.INCOME
+                        StatementType.CASHFLOW if canonical in ("ocf", "capex") else StatementType.INCOME
                     ),
-                    line_item=canonical, line_item_canonical=canonical,
+                    line_item=canonical,
+                    line_item_canonical=canonical,
                     value=v,
                 )
             )
@@ -275,7 +287,9 @@ def fs_derived(tmp_path: Path):
 def test_query_financials_derived_gross_margin(fs_derived: FinancialsStore) -> None:
     """gross_margin = (revenue - cost_of_revenue) / revenue。"""
     out = query_financials(
-        fs_derived, ticker="688981", line_item_canonical="gross_margin",
+        fs_derived,
+        ticker="688981",
+        line_item_canonical="gross_margin",
     )
     assert "error" not in out
     assert out["line_item"] == "gross_margin"
@@ -291,7 +305,9 @@ def test_query_financials_derived_gross_margin(fs_derived: FinancialsStore) -> N
 
 def test_query_financials_derived_net_margin(fs_derived: FinancialsStore) -> None:
     out = query_financials(
-        fs_derived, ticker="688981", line_item_canonical="net_margin",
+        fs_derived,
+        ticker="688981",
+        line_item_canonical="net_margin",
         fiscal_periods=["FY2024", "FY2025"],
     )
     assert "error" not in out
@@ -304,7 +320,9 @@ def test_query_financials_derived_net_margin(fs_derived: FinancialsStore) -> Non
 
 def test_query_financials_derived_operating_margin(fs_derived: FinancialsStore) -> None:
     out = query_financials(
-        fs_derived, ticker="688981", line_item_canonical="operating_margin",
+        fs_derived,
+        ticker="688981",
+        line_item_canonical="operating_margin",
     )
     assert "error" not in out
     assert abs(out["values"]["FY2024"] - 4.2e9 / 5.78e10) < 1e-9
@@ -313,7 +331,9 @@ def test_query_financials_derived_operating_margin(fs_derived: FinancialsStore) 
 def test_query_financials_derived_fcf_margin(fs_derived: FinancialsStore) -> None:
     """fcf_margin = (ocf - capex) / revenue。SMIC 由于 capex>ocf 所以 fcf 为负。"""
     out = query_financials(
-        fs_derived, ticker="688981", line_item_canonical="fcf_margin",
+        fs_derived,
+        ticker="688981",
+        line_item_canonical="fcf_margin",
     )
     assert "error" not in out
     # FY2024: (2.27e10 - 5.46e10) / 5.78e10 ≈ -0.5519
@@ -326,13 +346,18 @@ def test_query_financials_derived_missing_dependency(tmp_path: Path) -> None:
     """缺基础依赖时返回带错误信息的 dict。"""
     store = FinancialsStore(tmp_path / "fin.db")
     # 只塞 revenue，没有 cost_of_revenue → gross_margin 算不出来
-    store.upsert_lines([
-        FinancialLine(
-            ticker="T", fiscal_period="FY2025",
-            statement_type=StatementType.INCOME,
-            line_item="营业收入", line_item_canonical="revenue", value=1.0e10,
-        )
-    ])
+    store.upsert_lines(
+        [
+            FinancialLine(
+                ticker="T",
+                fiscal_period="FY2025",
+                statement_type=StatementType.INCOME,
+                line_item="营业收入",
+                line_item_canonical="revenue",
+                value=1.0e10,
+            )
+        ]
+    )
     out = query_financials(store, ticker="T", line_item_canonical="gross_margin")
     assert "error" in out
     assert "cost_of_revenue" in out["error"]
@@ -344,20 +369,42 @@ def test_query_financials_derived_missing_dependency(tmp_path: Path) -> None:
 def test_query_financials_derived_zero_revenue(tmp_path: Path) -> None:
     """分母 revenue=0 → 该 fy 跳过，不返回 inf/NaN。"""
     store = FinancialsStore(tmp_path / "fin.db")
-    store.upsert_lines([
-        FinancialLine(ticker="T", fiscal_period="FY2025",
-                      statement_type=StatementType.INCOME,
-                      line_item="营业收入", line_item_canonical="revenue", value=0.0),
-        FinancialLine(ticker="T", fiscal_period="FY2025",
-                      statement_type=StatementType.INCOME,
-                      line_item="净利润", line_item_canonical="net_profit", value=5.0),
-        FinancialLine(ticker="T", fiscal_period="FY2024",
-                      statement_type=StatementType.INCOME,
-                      line_item="营业收入", line_item_canonical="revenue", value=100.0),
-        FinancialLine(ticker="T", fiscal_period="FY2024",
-                      statement_type=StatementType.INCOME,
-                      line_item="净利润", line_item_canonical="net_profit", value=20.0),
-    ])
+    store.upsert_lines(
+        [
+            FinancialLine(
+                ticker="T",
+                fiscal_period="FY2025",
+                statement_type=StatementType.INCOME,
+                line_item="营业收入",
+                line_item_canonical="revenue",
+                value=0.0,
+            ),
+            FinancialLine(
+                ticker="T",
+                fiscal_period="FY2025",
+                statement_type=StatementType.INCOME,
+                line_item="净利润",
+                line_item_canonical="net_profit",
+                value=5.0,
+            ),
+            FinancialLine(
+                ticker="T",
+                fiscal_period="FY2024",
+                statement_type=StatementType.INCOME,
+                line_item="营业收入",
+                line_item_canonical="revenue",
+                value=100.0,
+            ),
+            FinancialLine(
+                ticker="T",
+                fiscal_period="FY2024",
+                statement_type=StatementType.INCOME,
+                line_item="净利润",
+                line_item_canonical="net_profit",
+                value=20.0,
+            ),
+        ]
+    )
     out = query_financials(store, ticker="T", line_item_canonical="net_margin")
     # FY2025 revenue=0 跳过；FY2024 正常算
     assert "FY2025" not in out["values"]
@@ -368,7 +415,9 @@ def test_query_financials_derived_zero_revenue(tmp_path: Path) -> None:
 def test_query_financials_derived_partial_period(fs_derived: FinancialsStore) -> None:
     """fiscal_periods 里既有可算的也有库里没的 → 命中的进 values，不报错。"""
     out = query_financials(
-        fs_derived, ticker="688981", line_item_canonical="gross_margin",
+        fs_derived,
+        ticker="688981",
+        line_item_canonical="gross_margin",
         fiscal_periods=["FY2024", "FY2030"],
     )
     assert "error" not in out
@@ -379,7 +428,9 @@ def test_query_financials_derived_partial_period(fs_derived: FinancialsStore) ->
 def test_query_financials_derived_no_data_for_requested(fs_derived: FinancialsStore) -> None:
     """请求的 fy 在依赖里全无数据 → error，但 derived/description 仍带回。"""
     out = query_financials(
-        fs_derived, ticker="688981", line_item_canonical="gross_margin",
+        fs_derived,
+        ticker="688981",
+        line_item_canonical="gross_margin",
         fiscal_periods=["FY2030", "FY2031"],
     )
     assert "error" in out
@@ -390,12 +441,17 @@ def test_query_financials_derived_no_data_for_requested(fs_derived: FinancialsSt
 def test_query_financials_unknown_canonical_lists_derived(fs_derived: FinancialsStore) -> None:
     """完全未知字段的 not-found 返回里也应暴露派生字段（hint LLM 知道有这些）。"""
     out = query_financials(
-        fs_derived, ticker="688981", line_item_canonical="完全未知XYZ",
+        fs_derived,
+        ticker="688981",
+        line_item_canonical="完全未知XYZ",
     )
     assert "error" in out
     assert "available_derived" in out
     assert set(out["available_derived"]) == {
-        "gross_margin", "net_margin", "operating_margin", "fcf_margin",
+        "gross_margin",
+        "net_margin",
+        "operating_margin",
+        "fcf_margin",
         "depreciation_amortization_total",
     }
 
@@ -403,9 +459,13 @@ def test_query_financials_unknown_canonical_lists_derived(fs_derived: Financials
 def test_list_derived_canonicals() -> None:
     """暴露给 pipeline.py 的 helper 应返回全部派生字段名。"""
     from walk_the_talk.verify.tools import list_derived_canonicals
+
     names = list_derived_canonicals()
     assert set(names) == {
-        "gross_margin", "net_margin", "operating_margin", "fcf_margin",
+        "gross_margin",
+        "net_margin",
+        "operating_margin",
+        "fcf_margin",
         "depreciation_amortization_total",
     }
 
@@ -421,9 +481,11 @@ def _seed_da(tmp_path: Path, components: dict[str, dict[int, float]]) -> Financi
         for y, v in by_year.items():
             lines.append(
                 FinancialLine(
-                    ticker="688981", fiscal_period=f"FY{y}",
+                    ticker="688981",
+                    fiscal_period=f"FY{y}",
                     statement_type=StatementType.CASHFLOW,
-                    line_item=canonical, line_item_canonical=canonical,
+                    line_item=canonical,
+                    line_item_canonical=canonical,
                     value=v,
                 )
             )
@@ -433,16 +495,20 @@ def _seed_da(tmp_path: Path, components: dict[str, dict[int, float]]) -> Financi
 
 def test_query_financials_derived_da_total_full_components(tmp_path: Path) -> None:
     """5 个 D&A 分量都有 → 合计 = 简单求和。"""
-    store = _seed_da(tmp_path, {
-        "depreciation":                       {2024: 6.0e9},
-        "depreciation_right_of_use":          {2024: 8.0e8},
-        "depreciation_investment_property":   {2024: 2.0e8},
-        "amortization_intangible":            {2024: 3.0e8},
-        "amortization_long_term_prepaid":     {2024: 1.0e8},
-    })
+    store = _seed_da(
+        tmp_path,
+        {
+            "depreciation": {2024: 6.0e9},
+            "depreciation_right_of_use": {2024: 8.0e8},
+            "depreciation_investment_property": {2024: 2.0e8},
+            "amortization_intangible": {2024: 3.0e8},
+            "amortization_long_term_prepaid": {2024: 1.0e8},
+        },
+    )
     try:
         out = query_financials(
-            store, ticker="688981",
+            store,
+            ticker="688981",
             line_item_canonical="depreciation_amortization_total",
         )
         assert "error" not in out
@@ -464,13 +530,17 @@ def test_query_financials_derived_da_total_full_components(tmp_path: Path) -> No
 
 def test_query_financials_derived_da_total_partial_components(tmp_path: Path) -> None:
     """只有部分分量（depreciation + amortization_intangible）→ 合计 = 已有的求和，缺失项视为 0。"""
-    store = _seed_da(tmp_path, {
-        "depreciation":             {2023: 5.0e9, 2024: 6.0e9, 2025: 7.0e9},
-        "amortization_intangible":  {2024: 3.0e8, 2025: 4.0e8},
-    })
+    store = _seed_da(
+        tmp_path,
+        {
+            "depreciation": {2023: 5.0e9, 2024: 6.0e9, 2025: 7.0e9},
+            "amortization_intangible": {2024: 3.0e8, 2025: 4.0e8},
+        },
+    )
     try:
         out = query_financials(
-            store, ticker="688981",
+            store,
+            ticker="688981",
             line_item_canonical="depreciation_amortization_total",
         )
         assert "error" not in out
@@ -488,16 +558,22 @@ def test_query_financials_derived_da_total_all_optional_missing(tmp_path: Path) 
     """所有可选依赖都不在 store 里 → 整 recipe 不可用，返回 error 但带 derived/description。"""
     store = FinancialsStore(tmp_path / "fin.db")
     # 仅塞 revenue（无关分量）
-    store.upsert_lines([
-        FinancialLine(
-            ticker="688981", fiscal_period="FY2024",
-            statement_type=StatementType.INCOME,
-            line_item="revenue", line_item_canonical="revenue", value=1.0e10,
-        )
-    ])
+    store.upsert_lines(
+        [
+            FinancialLine(
+                ticker="688981",
+                fiscal_period="FY2024",
+                statement_type=StatementType.INCOME,
+                line_item="revenue",
+                line_item_canonical="revenue",
+                value=1.0e10,
+            )
+        ]
+    )
     try:
         out = query_financials(
-            store, ticker="688981",
+            store,
+            ticker="688981",
             line_item_canonical="depreciation_amortization_total",
         )
         assert "error" in out
@@ -511,12 +587,16 @@ def test_query_financials_derived_da_total_all_optional_missing(tmp_path: Path) 
 
 def test_query_financials_derived_da_total_single_component(tmp_path: Path) -> None:
     """只有 1 个分量在 store 里 → 仍能给出合计（=该分量值）。"""
-    store = _seed_da(tmp_path, {
-        "depreciation": {2024: 6.0e9, 2025: 7.0e9},
-    })
+    store = _seed_da(
+        tmp_path,
+        {
+            "depreciation": {2024: 6.0e9, 2025: 7.0e9},
+        },
+    )
     try:
         out = query_financials(
-            store, ticker="688981",
+            store,
+            ticker="688981",
             line_item_canonical="depreciation_amortization_total",
         )
         assert "error" not in out
@@ -528,13 +608,17 @@ def test_query_financials_derived_da_total_single_component(tmp_path: Path) -> N
 
 def test_query_financials_derived_da_total_period_filter(tmp_path: Path) -> None:
     """fiscal_periods 过滤对求和派生字段同样生效。"""
-    store = _seed_da(tmp_path, {
-        "depreciation":            {2023: 5.0e9, 2024: 6.0e9, 2025: 7.0e9},
-        "amortization_intangible": {2023: 2.0e8, 2024: 3.0e8, 2025: 4.0e8},
-    })
+    store = _seed_da(
+        tmp_path,
+        {
+            "depreciation": {2023: 5.0e9, 2024: 6.0e9, 2025: 7.0e9},
+            "amortization_intangible": {2023: 2.0e8, 2024: 3.0e8, 2025: 4.0e8},
+        },
+    )
     try:
         out = query_financials(
-            store, ticker="688981",
+            store,
+            ticker="688981",
             line_item_canonical="depreciation_amortization_total",
             fiscal_periods=["FY2024"],
         )
@@ -563,40 +647,29 @@ def test_taxonomy_lookup_da_aliases() -> None:
     from walk_the_talk.ingest._taxonomy import lookup_canonical
 
     # 主用 depreciation
-    assert lookup_canonical(
-        "固定资产折旧、油气资产折耗、生产性生物资产折旧",
-        StatementType.CASHFLOW,
-    ) == "depreciation"
+    assert (
+        lookup_canonical(
+            "固定资产折旧、油气资产折耗、生产性生物资产折旧",
+            StatementType.CASHFLOW,
+        )
+        == "depreciation"
+    )
     assert lookup_canonical("固定资产折旧", StatementType.CASHFLOW) == "depreciation"
 
     # 使用权资产折旧 / 摊销（中芯沿用旧实操术语用"摊销"，会计含义等同折旧）
-    assert lookup_canonical(
-        "使用权资产折旧", StatementType.CASHFLOW
-    ) == "depreciation_right_of_use"
-    assert lookup_canonical(
-        "使用权资产摊销", StatementType.CASHFLOW
-    ) == "depreciation_right_of_use"
+    assert lookup_canonical("使用权资产折旧", StatementType.CASHFLOW) == "depreciation_right_of_use"
+    assert lookup_canonical("使用权资产摊销", StatementType.CASHFLOW) == "depreciation_right_of_use"
 
     # 投资性房地产折旧
-    assert lookup_canonical(
-        "投资性房地产折旧", StatementType.CASHFLOW
-    ) == "depreciation_investment_property"
+    assert lookup_canonical("投资性房地产折旧", StatementType.CASHFLOW) == "depreciation_investment_property"
 
     # 无形资产摊销（带/不带"的"）
-    assert lookup_canonical(
-        "无形资产摊销", StatementType.CASHFLOW
-    ) == "amortization_intangible"
-    assert lookup_canonical(
-        "无形资产的摊销", StatementType.CASHFLOW
-    ) == "amortization_intangible"
+    assert lookup_canonical("无形资产摊销", StatementType.CASHFLOW) == "amortization_intangible"
+    assert lookup_canonical("无形资产的摊销", StatementType.CASHFLOW) == "amortization_intangible"
 
     # 长期待摊费用摊销（带/不带"的"）
-    assert lookup_canonical(
-        "长期待摊费用摊销", StatementType.CASHFLOW
-    ) == "amortization_long_term_prepaid"
-    assert lookup_canonical(
-        "长期待摊费用的摊销", StatementType.CASHFLOW
-    ) == "amortization_long_term_prepaid"
+    assert lookup_canonical("长期待摊费用摊销", StatementType.CASHFLOW) == "amortization_long_term_prepaid"
+    assert lookup_canonical("长期待摊费用的摊销", StatementType.CASHFLOW) == "amortization_long_term_prepaid"
 
 
 def test_taxonomy_lookup_da_with_numeral_prefix() -> None:
@@ -605,13 +678,9 @@ def test_taxonomy_lookup_da_with_numeral_prefix() -> None:
     from walk_the_talk.ingest._taxonomy import lookup_canonical
 
     # "一、固定资产折旧" → 归一化后 "固定资产折旧"
-    assert lookup_canonical(
-        "一、固定资产折旧", StatementType.CASHFLOW
-    ) == "depreciation"
+    assert lookup_canonical("一、固定资产折旧", StatementType.CASHFLOW) == "depreciation"
     # "1、无形资产摊销"
-    assert lookup_canonical(
-        "1、无形资产摊销", StatementType.CASHFLOW
-    ) == "amortization_intangible"
+    assert lookup_canonical("1、无形资产摊销", StatementType.CASHFLOW) == "amortization_intangible"
 
 
 # ============== _suggest_alias ==============
@@ -641,8 +710,7 @@ def test_suggest_alias_empty_candidates() -> None:
 class _StubReportsStore:
     """模拟 ReportsStore 的 query_hybrid + get_texts，零 chromadb 依赖。"""
 
-    def __init__(self, hits_by_query: dict[str, list[tuple[str, float, dict]]],
-                 texts: dict[str, str]):
+    def __init__(self, hits_by_query: dict[str, list[tuple[str, float, dict]]], texts: dict[str, str]):
         self._hits_by_query = hits_by_query
         self._texts = texts
         self.last_call: dict[str, Any] = {}
@@ -669,18 +737,39 @@ class _StubReportsStore:
 def _stub_store_with_smic_data() -> _StubReportsStore:
     hits = {
         "capex 持平": [
-            ("688981-FY2025-sec03-p012", 0.95,
-             {"fiscal_period": "FY2025", "section": "管理层讨论",
-              "section_canonical": "mda", "locator": "管理层讨论#3",
-              "source_path": "/data/2025.html"}),
-            ("688981-FY2024-sec03-p008", 0.80,
-             {"fiscal_period": "FY2024", "section": "管理层讨论",
-              "section_canonical": "mda", "locator": "管理层讨论#2",
-              "source_path": "/data/2024.html"}),
-            ("688981-FY2023-sec02-p005", 0.50,
-             {"fiscal_period": "FY2023", "section": "致股东的信",
-              "section_canonical": "mgmt_letter", "locator": "致股东的信#1",
-              "source_path": "/data/2023.html"}),
+            (
+                "688981-FY2025-sec03-p012",
+                0.95,
+                {
+                    "fiscal_period": "FY2025",
+                    "section": "管理层讨论",
+                    "section_canonical": "mda",
+                    "locator": "管理层讨论#3",
+                    "source_path": "/data/2025.html",
+                },
+            ),
+            (
+                "688981-FY2024-sec03-p008",
+                0.80,
+                {
+                    "fiscal_period": "FY2024",
+                    "section": "管理层讨论",
+                    "section_canonical": "mda",
+                    "locator": "管理层讨论#2",
+                    "source_path": "/data/2024.html",
+                },
+            ),
+            (
+                "688981-FY2023-sec02-p005",
+                0.50,
+                {
+                    "fiscal_period": "FY2023",
+                    "section": "致股东的信",
+                    "section_canonical": "mgmt_letter",
+                    "locator": "致股东的信#1",
+                    "source_path": "/data/2023.html",
+                },
+            ),
         ],
     }
     texts = {
@@ -719,7 +808,8 @@ def test_query_chunks_explicit_periods_filter() -> None:
     """fiscal_periods 显式列表 → 只命中该年。"""
     store = _stub_store_with_smic_data()
     out = query_chunks(
-        store, query="capex 持平",
+        store,
+        query="capex 持平",
         fiscal_periods=["FY2024"],
         top_k=10,
     )
@@ -751,7 +841,8 @@ def test_query_chunks_short_text_no_truncation() -> None:
     """短文本不应被加省略号。"""
     store = _stub_store_with_smic_data()
     out = query_chunks(
-        store, query="capex 持平",
+        store,
+        query="capex 持平",
         fiscal_periods=["FY2023"],
         top_k=1,
         snippet_chars=400,

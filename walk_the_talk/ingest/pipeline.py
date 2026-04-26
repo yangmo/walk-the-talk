@@ -59,7 +59,7 @@ class _ProgressData:
         }
 
     @classmethod
-    def from_json(cls, d: dict[str, Any]) -> "_ProgressData":
+    def from_json(cls, d: dict[str, Any]) -> _ProgressData:
         return cls(
             ticker=d.get("ticker", ""),
             company=d.get("company", ""),

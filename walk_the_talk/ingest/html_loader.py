@@ -63,9 +63,7 @@ def _find_content(soup: BeautifulSoup):
         el = soup.select_one(sel)
         if el and len(el.get_text(strip=True)) > 1000:
             return el
-    raise UnsupportedHtmlLayoutError(
-        f"找不到正文容器，已尝试: {CONTENT_SELECTORS}"
-    )
+    raise UnsupportedHtmlLayoutError(f"找不到正文容器，已尝试: {CONTENT_SELECTORS}")
 
 
 def _strip_noise(content) -> None:
@@ -112,17 +110,22 @@ def _extract_tables(content, soup) -> list[Table]:
     captions = [_capture_caption(tb) for tb in raw_tables]
 
     tables: list[Table] = []
-    for i, (tb, caption) in enumerate(zip(raw_tables, captions)):
+    for i, (tb, caption) in enumerate(zip(raw_tables, captions, strict=True)):
         anchor = f"TABLE_PLACEHOLDER_{i}"
         try:
             md = table_to_markdown(tb)
             raw_2d = table_to_2d(tb)
         except Exception:
             md, raw_2d = "", []
-        tables.append(Table(
-            index=i, markdown=md, raw_2d=raw_2d,
-            bbox_anchor=anchor, caption=caption,
-        ))
+        tables.append(
+            Table(
+                index=i,
+                markdown=md,
+                raw_2d=raw_2d,
+                bbox_anchor=anchor,
+                caption=caption,
+            )
+        )
         tb.replace_with(soup.new_string(f"\n[[{anchor}]]\n"))
     return tables
 
@@ -176,8 +179,8 @@ def _split_sections(text: str) -> list[tuple[str, str]]:
     real: list[tuple[int, str, str]] = []
     seen_numbers: set[str] = set()
     for m in matches:
-        prefix = m.group(1)        # "第二节"
-        title = m.group(2)         # "致股东的信"
+        prefix = m.group(1)  # "第二节"
+        title = m.group(2)  # "致股东的信"
         if not _is_real_section_header(title):
             continue
         if prefix in seen_numbers:

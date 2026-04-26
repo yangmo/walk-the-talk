@@ -189,18 +189,12 @@ def extract_cmd(
         "--years",
         help="逗号分隔年份（如 2024,2025）。空 = 自动跑所有已 ingest 的年份。",
     ),
-    chat_model: str = typer.Option(
-        "deepseek-chat", "--chat-model", help="主力 LLM 模型名。"
-    ),
+    chat_model: str = typer.Option("deepseek-chat", "--chat-model", help="主力 LLM 模型名。"),
     reasoner_model: str = typer.Option(
         "deepseek-reasoner", "--reasoner-model", help="schema 失败时的降级模型。"
     ),
-    max_workers: int = typer.Option(
-        5, "--max-workers", "-j", help="ThreadPoolExecutor 并发度。"
-    ),
-    no_resume: bool = typer.Option(
-        False, "--no-resume", help="忽略已完成标记，全量重跑指定年份。"
-    ),
+    max_workers: int = typer.Option(5, "--max-workers", "-j", help="ThreadPoolExecutor 并发度。"),
+    no_resume: bool = typer.Option(False, "--no-resume", help="忽略已完成标记，全量重跑指定年份。"),
     debug: bool = typer.Option(
         False,
         "--debug",
@@ -360,9 +354,7 @@ def inspect_cmd(
         return
 
     # 收集所有出现过的 section
-    sections: list[str] = sorted(
-        {s for sec_map in result.chunks_by_year_section.values() for s in sec_map}
-    )
+    sections: list[str] = sorted({s for sec_map in result.chunks_by_year_section.values() for s in sec_map})
     table = Table(
         title=f"chunks by year × section ({result.total_chunks} total)",
         show_lines=False,
@@ -386,18 +378,14 @@ def inspect_cmd(
             str(row_total),
         )
     # 列汇总
-    col_totals = [
-        sum(result.chunks_by_year_section.get(y, {}).values()) for y in result.years
-    ]
+    col_totals = [sum(result.chunks_by_year_section.get(y, {}).values()) for y in result.years]
     table.add_row(
         "[bold]TOTAL[/]",
         *[f"[bold]{n}[/]" for n in col_totals],
         f"[bold]{result.total_chunks}[/]",
     )
     console.print(table)
-    console.print(
-        "[dim]★ 标记的 section 是 extract 的默认候选；其余 section 不进 LLM。[/]"
-    )
+    console.print("[dim]★ 标记的 section 是 extract 的默认候选；其余 section 不进 LLM。[/]")
 
 
 # ============== verify ==============
@@ -425,12 +413,8 @@ def verify_cmd(
         "--years",
         help="逗号分隔的发出年（claim.from_fiscal_year）；空 = 全部。",
     ),
-    chat_model: str = typer.Option(
-        "deepseek-chat", "--chat-model", help="主力 LLM 模型。"
-    ),
-    reasoner_model: str = typer.Option(
-        "deepseek-reasoner", "--reasoner-model", help="降级 LLM 模型。"
-    ),
+    chat_model: str = typer.Option("deepseek-chat", "--chat-model", help="主力 LLM 模型。"),
+    reasoner_model: str = typer.Option("deepseek-reasoner", "--reasoner-model", help="降级 LLM 模型。"),
     max_iters: int = typer.Option(
         4, "--max-iters", help="单 claim agent 工具调用上限（默认 4，含 rescue 重试预算）。"
     ),
@@ -447,9 +431,7 @@ def verify_cmd(
     no_resume: bool = typer.Option(
         False, "--no-resume", help="忽略 verdicts.json 缓存，全量重跑指定 claims。"
     ),
-    debug: bool = typer.Option(
-        False, "--debug", help="详细日志（per-claim 状态机轨迹）。"
-    ),
+    debug: bool = typer.Option(False, "--debug", help="详细日志（per-claim 状态机轨迹）。"),
     env_file: Path | None = typer.Option(None, "--env-file", help="自定义 .env 路径。"),
 ) -> None:
     """对 claims.json 中的前瞻断言执行 verify，落到 verdicts.json。"""
@@ -540,8 +522,7 @@ def verify_cmd(
         f"tool_calls={result.tool_calls_total}"
     )
     console.print(
-        f"[dim]elapsed[/] {result.elapsed_seconds:.1f}s  "
-        f"[dim]verdicts.json[/] {settings.verdicts_path}"
+        f"[dim]elapsed[/] {result.elapsed_seconds:.1f}s  [dim]verdicts.json[/] {settings.verdicts_path}"
     )
 
     if result.claims_failed:
@@ -573,12 +554,8 @@ def report_cmd(
         "--current-fy",
         help="覆盖自动检测的当前财年基准（默认 = verdicts 里 max(fiscal_year)）。",
     ),
-    no_highlights: bool = typer.Option(
-        False, "--no-highlights", help="关闭'突出事件'区（用于纯诊断场景）。"
-    ),
-    no_method_note: bool = typer.Option(
-        False, "--no-method-note", help="关闭末尾'验证方法说明'区。"
-    ),
+    no_highlights: bool = typer.Option(False, "--no-highlights", help="关闭'突出事件'区（用于纯诊断场景）。"),
+    no_method_note: bool = typer.Option(False, "--no-method-note", help="关闭末尾'验证方法说明'区。"),
 ) -> None:
     """从 verdicts.json + claims.json 合成 markdown 可信度报告。"""
 
@@ -622,9 +599,7 @@ def report_cmd(
             f"current_fy [yellow]FY{result['current_fy']}[/]"
         )
     else:
-        console.print(
-            "[yellow]整体可信度: 无可对照 claim（全为 PREMATURE/NOT_VERIFIABLE）[/]"
-        )
+        console.print("[yellow]整体可信度: 无可对照 claim（全为 PREMATURE/NOT_VERIFIABLE）[/]")
     console.print(f"[dim]report.md[/] {settings.report_path}")
 
 

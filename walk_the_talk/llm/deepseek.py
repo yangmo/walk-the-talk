@@ -53,9 +53,7 @@ class DeepSeekClient(LLMClient):
     ):
         api_key = api_key or os.getenv("DEEPSEEK_API_KEY")
         if not api_key:
-            raise RuntimeError(
-                "缺少 DEEPSEEK_API_KEY。请在 .env 或环境变量里配置。"
-            )
+            raise RuntimeError("缺少 DEEPSEEK_API_KEY。请在 .env 或环境变量里配置。")
         self._client = OpenAI(
             api_key=api_key,
             base_url=base_url or os.getenv("DEEPSEEK_BASE_URL") or _DEFAULT_BASE_URL,
@@ -121,9 +119,7 @@ class DeepSeekClient(LLMClient):
         pt = int(getattr(usage, "prompt_tokens", 0) or 0) if usage else 0
         ct = int(getattr(usage, "completion_tokens", 0) or 0) if usage else 0
         tt = int(getattr(usage, "total_tokens", 0) or 0) if usage else 0
-        raw_dict = (
-            completion.model_dump() if hasattr(completion, "model_dump") else {}
-        )
+        raw_dict = completion.model_dump() if hasattr(completion, "model_dump") else {}
 
         # 4. 写缓存
         if self._cache and cache_key:

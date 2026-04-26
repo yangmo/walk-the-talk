@@ -119,7 +119,7 @@ class ReportsStore:
         dists = res["distances"][0] if res.get("distances") else [None] * len(ids)
         metas = res["metadatas"][0] if res.get("metadatas") else [{}] * len(ids)
         out: list[tuple[str, float, dict]] = []
-        for cid, d, m in zip(ids, dists, metas):
+        for cid, d, m in zip(ids, dists, metas, strict=True):
             out.append((cid, float(d) if d is not None else 0.0, m or {}))
         return out
 
@@ -158,9 +158,7 @@ class ReportsStore:
         big = 1_000_000
         scored: list[tuple[str, float, dict]] = []
         for cid in all_ids:
-            score = alpha / (_RRF_K + d_rank.get(cid, big)) + (1 - alpha) / (
-                _RRF_K + b_rank.get(cid, big)
-            )
+            score = alpha / (_RRF_K + d_rank.get(cid, big)) + (1 - alpha) / (_RRF_K + b_rank.get(cid, big))
             scored.append((cid, score, meta_map.get(cid, {})))
         scored.sort(key=lambda x: x[1], reverse=True)
         return scored[:k]
@@ -198,8 +196,10 @@ class ReportsStore:
         ids = res.get("ids") or []
         docs = res.get("documents") or []
         metas = res.get("metadatas") or []
+        # chroma 返回的三列长度严格相等（同一组 chunk 的 id/doc/meta），
+        # strict=True 让万一 chroma API 改动也能立即暴露。
         out: list[Chunk] = []
-        for cid, doc, meta in zip(ids, docs, metas):
+        for cid, doc, meta in zip(ids, docs, metas, strict=True):
             meta = meta or {}
             tbl_refs_raw = meta.get("contains_table_refs", "")
             if isinstance(tbl_refs_raw, str):
@@ -237,7 +237,7 @@ class ReportsStore:
         res = self._coll.get(ids=list(ids), include=["documents"])
         out_ids = res.get("ids") or []
         out_docs = res.get("documents") or []
-        return {cid: (doc or "") for cid, doc in zip(out_ids, out_docs)}
+        return {cid: (doc or "") for cid, doc in zip(out_ids, out_docs, strict=True)}
 
     # ============== 杂项 ==============
 

@@ -131,9 +131,7 @@ def run_extract(
     # 选定年份
     years = settings.years or _discover_years(progress)
     if not years:
-        raise RuntimeError(
-            "没有可处理的年份。请先跑 `walk-the-talk ingest` 或显式 --years。"
-        )
+        raise RuntimeError("没有可处理的年份。请先跑 `walk-the-talk ingest` 或显式 --years。")
     _emit(f"待处理年份：{years}（resume={settings.resume}, debug={debug}）")
 
     result = ExtractResult()
@@ -250,9 +248,7 @@ def run_extract(
     # debug 落盘
     if debug:
         raw_path = settings.work_dir / RAW_CLAIMS_FILENAME
-        raw_path.write_text(
-            json.dumps(raw_dump, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        raw_path.write_text(json.dumps(raw_dump, ensure_ascii=False, indent=2), encoding="utf-8")
         _emit(f"[debug] raw claims (postprocess 前) → {raw_path}")
         log_path = settings.work_dir / EXTRACT_LOG_FILENAME
         log_path.write_text("\n".join(log_lines) + ("\n" if log_lines else ""), encoding="utf-8")
@@ -449,9 +445,7 @@ def _year_has_claims(store: ClaimStore, year: int) -> bool:
 
 def _drop_year(store: ClaimStore, year: int) -> None:
     """删除该年所有 claim 与 years_processed 标记，便于全量重跑。"""
-    drop_ids = [
-        cid for cid, c in store.claims.items() if c.from_fiscal_year == year
-    ]
+    drop_ids = [cid for cid, c in store.claims.items() if c.from_fiscal_year == year]
     for cid in drop_ids:
         store.claims.pop(cid, None)
     if year in store.years_processed:

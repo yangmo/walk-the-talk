@@ -157,9 +157,7 @@ def _seed_environment(
         years_processed=sorted({c.from_fiscal_year for c in claims}),
         claims={c.claim_id: c for c in claims},
     )
-    (work / "claims.json").write_text(
-        store.model_dump_json(indent=2), encoding="utf-8"
-    )
+    (work / "claims.json").write_text(store.model_dump_json(indent=2), encoding="utf-8")
 
     fs = FinancialsStore(work / "financials.db")
     try:
@@ -206,9 +204,7 @@ def test_parse_fy(s, expected) -> None:
 
 def test_detect_current_fiscal_year_from_store_picks_max(tmp_path: Path) -> None:
     """乱序 ingest 的财年也应取最大值。"""
-    work = _seed_environment(
-        tmp_path, [_make_claim()], periods=[2022, 2023, 2025, 2024]
-    )
+    work = _seed_environment(tmp_path, [_make_claim()], periods=[2022, 2023, 2025, 2024])
     with FinancialsStore(work / "financials.db") as store:
         assert _detect_current_fiscal_year_from_store(store, "000001") == 2025
 
@@ -258,9 +254,7 @@ def test_premature_short_circuit(tmp_path: Path) -> None:
     assert result.verdicts_by_type.get("premature") == 1
     assert result.verdicts_by_type.get("not_verifiable") is None
 
-    store = VerdictStore.model_validate_json(
-        settings.verdicts_path.read_text(encoding="utf-8")
-    )
+    store = VerdictStore.model_validate_json(settings.verdicts_path.read_text(encoding="utf-8"))
     rec = store.verifications["000001-FY2024-001"][0]
     assert rec.verdict == Verdict.PREMATURE
     assert rec.confidence == 1.0
@@ -337,9 +331,7 @@ def test_no_resume_overwrites(tmp_path: Path) -> None:
     settings = VerifySettings(data_dir=tmp_path, ticker="000001", company="测试公司")
     _run_verify(settings)
 
-    settings_no_resume = VerifySettings(
-        data_dir=tmp_path, ticker="000001", company="测试公司", resume=False
-    )
+    settings_no_resume = VerifySettings(data_dir=tmp_path, ticker="000001", company="测试公司", resume=False)
     result = _run_verify(settings_no_resume)
     assert result.claims_processed == 1
     assert result.claims_skipped == 0
@@ -348,10 +340,7 @@ def test_no_resume_overwrites(tmp_path: Path) -> None:
 def test_claim_ids_filter(tmp_path: Path) -> None:
     """--claim-ids 只验证指定 ID。"""
 
-    claims = [
-        _make_claim(claim_id=f"000001-FY2024-{i:03d}", end_fy="FY2026")
-        for i in (1, 2, 3)
-    ]
+    claims = [_make_claim(claim_id=f"000001-FY2024-{i:03d}", end_fy="FY2026") for i in (1, 2, 3)]
     _seed_environment(tmp_path, claims, periods=[2024, 2025])
 
     settings = VerifySettings(
@@ -362,8 +351,8 @@ def test_claim_ids_filter(tmp_path: Path) -> None:
     )
     result = _run_verify(settings)
 
-    assert result.claims_total == 3            # 总数包含全部
-    assert result.claims_processed == 1        # 但只处理 1 条
+    assert result.claims_total == 3  # 总数包含全部
+    assert result.claims_processed == 1  # 但只处理 1 条
 
 
 def test_years_filter(tmp_path: Path) -> None:
@@ -420,7 +409,7 @@ def test_mixed_claims_summary(tmp_path: Path) -> None:
         _make_claim(claim_id="000001-FY2023-001", from_fy=2023, end_fy="FY2025"),  # stub
         _make_claim(claim_id="000001-FY2024-001", from_fy=2024, end_fy="FY2026"),  # premature
         _make_claim(claim_id="000001-FY2024-002", from_fy=2024, end_fy="FY2027"),  # premature
-        _make_claim(claim_id="000001-FY2024-003", from_fy=2024, end_fy="长期"),    # stub
+        _make_claim(claim_id="000001-FY2024-003", from_fy=2024, end_fy="长期"),  # stub
     ]
     _seed_environment(tmp_path, claims, periods=[2024, 2025])
 
@@ -436,9 +425,7 @@ def test_mixed_claims_summary(tmp_path: Path) -> None:
 # ============== _load_reports_store：embedder 自动检测 ==============
 
 
-def _seed_reports_collection(
-    work_dir: Path, *, ticker: str, embedder_name: str
-) -> None:
+def _seed_reports_collection(work_dir: Path, *, ticker: str, embedder_name: str) -> None:
     """用指定 embedder 建一个 reports_<ticker> collection（写一条 dummy chunk）。"""
     from walk_the_talk.core.enums import ReportType, SectionCanonical
     from walk_the_talk.core.models import Chunk
@@ -484,9 +471,7 @@ def test_load_reports_store_explicit_override(tmp_path: Path) -> None:
     _seed_reports_collection(work, ticker="000001", embedder_name="hash")
 
     # 故意 override 成 hash（即使有 metadata 也走 override 路径）
-    settings = VerifySettings(
-        data_dir=tmp_path, ticker="000001", company="x", embedder="hash"
-    )
+    settings = VerifySettings(data_dir=tmp_path, ticker="000001", company="x", embedder="hash")
     store = _load_reports_store(settings)
     assert store is not None
     assert store.embedder.name == "hash"

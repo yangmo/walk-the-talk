@@ -16,6 +16,7 @@ from pathlib import Path
 try:
     from dotenv import load_dotenv
 except ImportError:  # pragma: no cover
+
     def load_dotenv(*args, **kwargs) -> bool:  # type: ignore[no-redef]
         return False
 
@@ -47,11 +48,11 @@ class IngestSettings:
     data_dir: Path
     ticker: str
     company: str
-    embedder_name: str = "bge"          # bge | hash
+    embedder_name: str = "bge"  # bge | hash
     chunk_target_size: int = 800
     chunk_max_size: int = 1500
     chunk_min_size: int = 200
-    resume: bool = True                  # False 等价于 v1 的 --no-resume
+    resume: bool = True  # False 等价于 v1 的 --no-resume
     work_dir: Path = field(init=False)
 
     def __post_init__(self) -> None:
@@ -81,12 +82,10 @@ class ExtractSettings:
     company: str
     chat_model: str = "deepseek-chat"
     reasoner_model: str = "deepseek-reasoner"
-    max_workers: int = 5            # ThreadPoolExecutor 并发
+    max_workers: int = 5  # ThreadPoolExecutor 并发
     years: list[int] | None = None  # None = 全跑；否则只跑指定年
     section_canonicals: list[str] = field(
-        default_factory=lambda: [
-            "mgmt_letter", "mda", "outlook", "risk", "guidance", "board_report"
-        ]
+        default_factory=lambda: ["mgmt_letter", "mda", "outlook", "risk", "guidance", "board_report"]
     )
     resume: bool = True
     work_dir: Path = field(init=False)
@@ -117,13 +116,13 @@ class VerifySettings:
     company: str
     chat_model: str = "deepseek-chat"
     reasoner_model: str = "deepseek-reasoner"
-    max_iters: int = 4                            # agent 单 claim 工具调用上限（含 P4 rescue 多出来的 1 轮预算）
-    claim_ids: list[str] | None = None            # 只验证指定 ID（None=全部）
-    years: list[int] | None = None                # 只验证某些发出年的 claim
-    current_fiscal_year: int | None = None        # None=自动检测 financials.db 最新 FY
-    embedder: str | None = None                   # query_chunks 用的 embedder 名；
-                                                  # None = 从 chroma collection metadata 自动检测，
-                                                  # 检测失败回落 'bge'。可选 'bge' | 'hash'。
+    max_iters: int = 4  # agent 单 claim 工具调用上限（含 P4 rescue 多出来的 1 轮预算）
+    claim_ids: list[str] | None = None  # 只验证指定 ID（None=全部）
+    years: list[int] | None = None  # 只验证某些发出年的 claim
+    current_fiscal_year: int | None = None  # None=自动检测 financials.db 最新 FY
+    embedder: str | None = None  # query_chunks 用的 embedder 名；
+    # None = 从 chroma collection metadata 自动检测，
+    # 检测失败回落 'bge'。可选 'bge' | 'hash'。
     resume: bool = True
     work_dir: Path = field(init=False)
 
@@ -168,9 +167,9 @@ class ReportSettings:
     ticker: str
     company: str
     output_filename: str = REPORT_FILE
-    current_fy: int | None = None       # None = 自动从 verdicts 里推算（max fiscal_year）
-    include_highlights: bool = True     # --no-highlights 关闭"突出事件"区
-    include_method_note: bool = True    # 末尾"验证方法说明"区
+    current_fy: int | None = None  # None = 自动从 verdicts 里推算（max fiscal_year）
+    include_highlights: bool = True  # --no-highlights 关闭"突出事件"区
+    include_method_note: bool = True  # 末尾"验证方法说明"区
     work_dir: Path = field(init=False)
 
     def __post_init__(self) -> None:

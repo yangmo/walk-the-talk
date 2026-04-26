@@ -53,9 +53,9 @@ _FY_RE = re.compile(r"FY(\d{4})")
 class VerifyResult:
     """verify 跑批的统计快照，给 CLI 渲染表格用。"""
 
-    claims_total: int = 0                # claims.json 里全部 claim 数
-    claims_processed: int = 0            # 本次实际产出 verdict 的 claim 数
-    claims_skipped: int = 0              # resume 跳过的 claim 数
+    claims_total: int = 0  # claims.json 里全部 claim 数
+    claims_processed: int = 0  # 本次实际产出 verdict 的 claim 数
+    claims_skipped: int = 0  # resume 跳过的 claim 数
     claims_failed: list[str] = field(default_factory=list)
     current_fiscal_year: int = 0
     verdicts_by_type: dict[str, int] = field(default_factory=dict)
@@ -92,13 +92,9 @@ def run_verify(
 
     # 1. 校验 + 加载 claims.json
     if not settings.claims_path.exists():
-        raise RuntimeError(
-            f"claims.json 不存在：{settings.claims_path}；先跑 walk-the-talk extract"
-        )
+        raise RuntimeError(f"claims.json 不存在：{settings.claims_path}；先跑 walk-the-talk extract")
 
-    claim_store = ClaimStore.model_validate_json(
-        settings.claims_path.read_text(encoding="utf-8")
-    )
+    claim_store = ClaimStore.model_validate_json(settings.claims_path.read_text(encoding="utf-8"))
     all_claims = list(claim_store.claims.values())
     result.claims_total = len(all_claims)
     logger(f"[dim]loaded[/] claims.json：{len(all_claims)} 条 claim")
@@ -112,9 +108,7 @@ def run_verify(
     own_financials = False
     if financials_store is None:
         if not settings.financials_db_path.exists():
-            raise RuntimeError(
-                f"financials.db 不存在：{settings.financials_db_path}；先跑 ingest"
-            )
+            raise RuntimeError(f"financials.db 不存在：{settings.financials_db_path}；先跑 ingest")
         financials_store = FinancialsStore(settings.financials_db_path)
         own_financials = True
 
@@ -131,9 +125,7 @@ def run_verify(
             current_fy = settings.current_fiscal_year
             logger(f"[dim]current_fy[/] FY{current_fy} (CLI override)")
         else:
-            current_fy = _detect_current_fiscal_year_from_store(
-                financials_store, settings.ticker
-            )
+            current_fy = _detect_current_fiscal_year_from_store(financials_store, settings.ticker)
             logger(f"[dim]current_fy[/] FY{current_fy} (来自 financials.db)")
         result.current_fiscal_year = current_fy
 
@@ -159,10 +151,7 @@ def run_verify(
             verdict_store = VerdictStore.model_validate_json(
                 settings.verdicts_path.read_text(encoding="utf-8")
             )
-            logger(
-                f"[dim]resume[/] 已有 verdicts.json："
-                f"{len(verdict_store.verifications)} 条 claim 已验证"
-            )
+            logger(f"[dim]resume[/] 已有 verdicts.json：{len(verdict_store.verifications)} 条 claim 已验证")
         else:
             verdict_store = VerdictStore(
                 company_name=settings.company,
@@ -266,9 +255,7 @@ def _verify_with_agent(
     return agent_result.record
 
 
-def _build_premature_record(
-    claim: Claim, *, current_fy: int
-) -> VerificationRecord:
+def _build_premature_record(claim: Claim, *, current_fy: int) -> VerificationRecord:
     return VerificationRecord(
         fiscal_year=current_fy,
         verdict=Verdict.PREMATURE,
@@ -278,8 +265,7 @@ def _build_premature_record(
         computation_trace=[],
         confidence=1.0,
         comment=(
-            f"horizon end ({claim.horizon.end}) 大于当前财年 (FY{current_fy})；"
-            f"预测窗口尚未到达，无法验证。"
+            f"horizon end ({claim.horizon.end}) 大于当前财年 (FY{current_fy})；预测窗口尚未到达，无法验证。"
         ),
         cost={},
     )
@@ -307,9 +293,7 @@ def _filter_claims(claims: Iterable[Claim], settings: VerifySettings) -> list[Cl
     return out
 
 
-def _detect_current_fiscal_year_from_store(
-    store: FinancialsStore, ticker: str
-) -> int:
+def _detect_current_fiscal_year_from_store(store: FinancialsStore, ticker: str) -> int:
     """从已打开的 FinancialsStore 推断当前财年（该 ticker 出现过的最大 FY）。"""
     periods = store.list_periods(ticker)
     years = [y for y in (_parse_fy(p) for p in periods) if y is not None]
@@ -380,8 +364,5 @@ def _load_reports_store(
         embedder=embedder,
     )
     src = "CLI override" if chosen else ("collection metadata" if detected else "default=bge")
-    logger(
-        f"[dim]reports_store[/] 已加载（chunks={store.count()}，"
-        f"embedder={embedder.name} via {src}）"
-    )
+    logger(f"[dim]reports_store[/] 已加载（chunks={store.count()}，embedder={embedder.name} via {src}）")
     return store

@@ -19,5 +19,6 @@ __all__ = [
 def __getattr__(name: str):
     if name in {"run_extract", "ExtractResult"}:
         from . import pipeline as _p
+
         return getattr(_p, name)
     raise AttributeError(f"module 'walk_the_talk.extract' has no attribute {name!r}")

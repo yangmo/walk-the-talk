@@ -234,9 +234,7 @@ _DERIVED_RECIPES: dict[str, _DerivedRecipe] = {
         # 注意：财务报表里 capex 一般以"购建固定资产支付的现金"形态入库（正数流出），
         # 所以 FCF = OCF - capex（capex 不取绝对值，因为它本就是正数）
         compute=lambda v: _safe_div(
-            (v["ocf"] - v["capex"])
-            if v["ocf"] is not None and v["capex"] is not None
-            else None,
+            (v["ocf"] - v["capex"]) if v["ocf"] is not None and v["capex"] is not None else None,
             v["revenue"],
         ),
         unit="ratio",
@@ -415,13 +413,9 @@ def query_financials(
 
     # 派生字段优先匹配（避免和基础字段重名时被基础查询挡住，虽然目前没冲突）
     if line_item_canonical in _DERIVED_RECIPES:
-        return _query_derived(
-            store, ticker=ticker, name=line_item_canonical, requested=requested
-        )
+        return _query_derived(store, ticker=ticker, name=line_item_canonical, requested=requested)
 
-    series = store.get_series(
-        ticker, line_item_canonical, fiscal_periods=requested
-    )
+    series = store.get_series(ticker, line_item_canonical, fiscal_periods=requested)
 
     if series:
         return {
@@ -439,8 +433,7 @@ def query_financials(
             "values": {},
             "available_fiscal_periods": list(full_series.keys()),
             "error": (
-                f"no data for requested fiscal_periods "
-                f"{requested}; available: {list(full_series.keys())}"
+                f"no data for requested fiscal_periods {requested}; available: {list(full_series.keys())}"
             ),
         }
 
@@ -494,7 +487,7 @@ class ChunkSearcher(Protocol):
 class _DateRange:
     """fiscal_period 字符串 ($in list) 的构造助手。"""
 
-    after: int | None = None         # 严格大于该年（找后续年份证据时用）
+    after: int | None = None  # 严格大于该年（找后续年份证据时用）
     explicit: list[str] | None = None  # 显式列出
 
 
@@ -575,8 +568,7 @@ def _build_where(
         return {"fiscal_period": {"$in": list(fiscal_periods)}}
     if after_fiscal_year is not None:
         candidates = [
-            f"FY{y}"
-            for y in range(after_fiscal_year + 1, after_fiscal_year + 1 + _FUTURE_LOOKAHEAD)
+            f"FY{y}" for y in range(after_fiscal_year + 1, after_fiscal_year + 1 + _FUTURE_LOOKAHEAD)
         ]
         return {"fiscal_period": {"$in": candidates}}
     return None

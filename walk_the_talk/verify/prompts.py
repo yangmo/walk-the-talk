@@ -278,9 +278,7 @@ def _format_history(history: list[dict[str, Any]]) -> str:
         if len(result_text) > _RESULT_PREVIEW_CHARS:
             result_text = result_text[:_RESULT_PREVIEW_CHARS] + "…(truncated)"
         args_text = json.dumps(h.get("args", {}), ensure_ascii=False, default=str)
-        parts.append(
-            f"[{i}] {h.get('tool', '?')}({args_text}) → {result_text}"
-        )
+        parts.append(f"[{i}] {h.get('tool', '?')}({args_text}) → {result_text}")
     return "\n".join(parts)
 
 

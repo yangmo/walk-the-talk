@@ -70,11 +70,10 @@ def test_chunk_table_only_paragraph_isolated():
 
 def test_chunk_long_paragraph_soft_split():
     # 单段 4000 字，应被句号软切到 max_size 以下
-    long_para = ("。".join([f"句子{i}" * 30 for i in range(50)]) + "。")
+    long_para = "。".join([f"句子{i}" * 30 for i in range(50)]) + "。"
     s = _make_section("第四节管理层讨论与分析", long_para)
     chunks = chunk_section(s, ticker="X", fiscal_year=2024, source_path="x")
-    assert all(len(c.text) <= DEFAULT_MAX_SIZE for c in chunks), \
-        [(len(c.text), c.locator) for c in chunks]
+    assert all(len(c.text) <= DEFAULT_MAX_SIZE for c in chunks), [(len(c.text), c.locator) for c in chunks]
     assert len(chunks) >= 2
 
 
@@ -95,7 +94,11 @@ def test_short_title_attached_to_following_table():
     text = "前面长段一段一段长长的内容内容。\n\n3.研发投入情况表\n\n[[TABLE_PLACEHOLDER_45]]\n\n后面还有内容内容内容。"
     s = _make_section("第四节管理层讨论与分析", text)
     chunks = chunk_section(
-        s, ticker="X", fiscal_year=2024, source_path="x", min_size=10,
+        s,
+        ticker="X",
+        fiscal_year=2024,
+        source_path="x",
+        min_size=10,
     )
     # 表格 chunk 应包含标题 caption
     table_chunks = [c for c in chunks if "[[TABLE_PLACEHOLDER_45]]" in c.text]
@@ -171,8 +174,7 @@ def test_chunk_smic_2025_endtoend(smic_html_path: Path):
 
     # 财务报告（NOTES）chunks 数应占大头
     notes_chunks = [c for c in chunks if c.section_canonical == SectionCanonical.NOTES]
-    assert len(notes_chunks) > len(mda_chunks), \
-        f"notes={len(notes_chunks)}, mda={len(mda_chunks)}"
+    assert len(notes_chunks) > len(mda_chunks), f"notes={len(notes_chunks)}, mda={len(mda_chunks)}"
 
     # 含表格占位符的 chunk 全部应有 contains_table_refs
     has_placeholder = [c for c in chunks if "[[TABLE_PLACEHOLDER_" in c.text]

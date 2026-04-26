@@ -150,13 +150,9 @@ class _StubLLM(LLMClient):
                 hit = self.script.pop(i)
                 break
         else:
-            raise AssertionError(
-                f"StubLLM 脚本耗尽：step={step!r}, 剩余={self.script}"
-            )
+            raise AssertionError(f"StubLLM 脚本耗尽：step={step!r}, 剩余={self.script}")
 
-        self.calls.append(
-            {"step": step, "model": model, "messages_len": len(messages)}
-        )
+        self.calls.append({"step": step, "model": model, "messages_len": len(messages)})
 
         if hit.get("raise") is not None:
             raise hit["raise"]
@@ -199,9 +195,7 @@ def _plan_tool(tool_name: str, args: dict[str, Any], rationale: str = "stub") ->
 def _plan_finalize(rationale: str = "stub done") -> dict:
     return {
         "step": "plan",
-        "text": json.dumps(
-            {"action": "finalize", "rationale": rationale}, ensure_ascii=False
-        ),
+        "text": json.dumps({"action": "finalize", "rationale": rationale}, ensure_ascii=False),
         "model": "deepseek-chat",
     }
 
@@ -370,13 +364,17 @@ def test_dispatch_query_chunks(tmp_path: Path) -> None:
     claim = _make_claim()
     reports = _StubReports(
         hits=[
-            ("000001-FY2025-mda-p001", 0.9, {
-                "fiscal_period": "FY2025",
-                "section": "管理层讨论与分析",
-                "section_canonical": "mda",
-                "locator": "管理层讨论与分析#1",
-                "source_path": "/tmp/2025.html",
-            }),
+            (
+                "000001-FY2025-mda-p001",
+                0.9,
+                {
+                    "fiscal_period": "FY2025",
+                    "section": "管理层讨论与分析",
+                    "section_canonical": "mda",
+                    "locator": "管理层讨论与分析#1",
+                    "source_path": "/tmp/2025.html",
+                },
+            ),
         ],
         texts={"000001-FY2025-mda-p001": "公司 2025 年收入同比增长 20%……"},
     )
@@ -575,7 +573,7 @@ def test_finalize_invalid_verdict_clamped(tmp_path: Path) -> None:
                 "step": "finalize",
                 "text": json.dumps(
                     {
-                        "verdict": "premature",   # PREMATURE 已被 pipeline 短路，不允许在 finalize 出现
+                        "verdict": "premature",  # PREMATURE 已被 pipeline 短路，不允许在 finalize 出现
                         "actual_value": None,
                         "confidence": 0.9,
                         "comment": "...",
@@ -647,9 +645,19 @@ def test_cost_dict_aggregation(tmp_path: Path) -> None:
     claim = _make_claim()
     llm = _StubLLM(
         [
-            {**_plan_tool("compute", {"expr": "1+1"}), "prompt_tokens": 100,
-             "completion_tokens": 30, "total_tokens": 130},
-            {**_plan_finalize(), "prompt_tokens": 80, "completion_tokens": 20, "total_tokens": 100, "cached": True},
+            {
+                **_plan_tool("compute", {"expr": "1+1"}),
+                "prompt_tokens": 100,
+                "completion_tokens": 30,
+                "total_tokens": 130,
+            },
+            {
+                **_plan_finalize(),
+                "prompt_tokens": 80,
+                "completion_tokens": 20,
+                "total_tokens": 100,
+                "cached": True,
+            },
             {**_finalize("verified"), "prompt_tokens": 50, "completion_tokens": 40, "total_tokens": 90},
         ]
     )
@@ -714,13 +722,17 @@ def test_rescue_triggers_on_not_verifiable_with_remaining_budget(tmp_path: Path)
     claim = _make_claim()
     reports = _StubReports(
         hits=[
-            ("000001-FY2025-mda-p001", 0.9, {
-                "fiscal_period": "FY2025",
-                "section": "管理层讨论与分析",
-                "section_canonical": "mda",
-                "locator": "管理层讨论与分析#1",
-                "source_path": "/tmp/2025.html",
-            }),
+            (
+                "000001-FY2025-mda-p001",
+                0.9,
+                {
+                    "fiscal_period": "FY2025",
+                    "section": "管理层讨论与分析",
+                    "section_canonical": "mda",
+                    "locator": "管理层讨论与分析#1",
+                    "source_path": "/tmp/2025.html",
+                },
+            ),
         ],
         texts={"000001-FY2025-mda-p001": "公司 2025 年继续推进相关项目……"},
     )
