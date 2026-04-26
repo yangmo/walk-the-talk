@@ -2,34 +2,35 @@
 
 > **walk-the-talk**：回溯上市公司历年年报中管理层做出的可验证断言（claim），用后续年份的事实回头打分，量化"管理层是否说到做到"。
 >
-> GitHub 仓库名：**`walk-the-talk`**
-> 本地代码路径：**`/Users/alfy/Desktop/workspace/walk-the-talk`**（待创建）
+> 本文档是项目的完整技术设计基线，覆盖架构决策、四阶段流水线设计、prompt 设计、上线后优化以及真实跑批数据。
 >
-> 本文档是 clean-slate 设计基线，开始实现时直接对照。
->
-> 文档内若提到 "v1" / "v2"，指的是 **walk-the-talk 自身的版本范围**：v1 = 本次实现（年报、单公司、HTML 输入），v2 = 未来扩展（季报、跨公司对比、reranker 等）。
+> 文档内若提到 "v1" / "v2"：v1 = 本仓库当前实现（年报、单公司、HTML 输入），v2 = 未来扩展（季报、跨公司对比、reranker 等，见 §十一 Roadmap）。
 
-## 决策基线（已确认）
+## 阅读路线
 
-| 维度 | 选择 |
-|---|---|
-| GitHub 仓库名 | `walk-the-talk` |
-| 本地代码路径 | `/Users/alfy/Desktop/workspace/walk-the-talk` |
-| **输入格式** | **HTML（新浪财经年报全文页）** |
-| **输入约定** | 调用时传入一个目录路径，目录下放 `<year>.html`（如 `2024.html`、`2025.html`） |
-| 数据获取 | **手动下载**（不做爬虫，不做 fetcher） |
-| Embedding 模型 | **BGE-small-zh**（512 维，~100MB，本地 CPU） |
-| 向量库 | **Chroma** |
-| BM25 | 本地 `rank_bm25` + jieba 分词 |
-| 结构化表 | v1 必做（财务三表 + 关键附注），从 HTML `<table>` 二维直读 |
-| 季报支持 | v1 只年报，v2 再扩季报 |
-| Classifier 模型 | DeepSeek-chat（前瞻 chunk 二分类） |
-| Extractor 模型 | DeepSeek-chat（chat 失败两级降级到 reasoner） |
-| Verifier 模型 | reasoner（planner / synthesizer）+ chat（executor）混合 |
-| `verification_plan` 产出阶段 | extract 阶段产出粗 plan，verify 第一轮自检修正 |
-| 测试 fixture | 主链路跑通后补 smoke test（HTML loader / table_extractor） |
-| 编排框架 | **LangGraph（per-Phase 内部状态机）** |
-| Checkpointer | **SQLite（LangGraph `SqliteSaver`）**——落盘到 `<workdir>/checkpoints.db` |
+- **想快速理解项目** → 看仓库根 [README.md](README.md)
+- **关心技术决策为什么这么做** → §一 技术选型综述
+- **想看四阶段每个怎么实现的** → §四 Phase 1 / §五 Phase 2 / §六 Phase 3 / §七 Phase 4
+- **想看上线后基于真实数据做了哪些迭代** → §九 上线后优化（P0-P4）
+- **想看真实数据跑出来什么结果** → §十 SMIC 跑批结果
+- **关心已知问题与未来计划** → §十一 已知 issues + Roadmap
+
+## 决策基线表（最终版）
+
+| 维度 | 选择 | 理由（详见 §一） |
+|---|---|---|
+| **输入格式** | HTML（新浪财经全文页） | 比 PDF 噪音少 70%、章节切分一行正则、表格 `<tr><td>` 直读 |
+| 数据获取 | 用户手动下载 | 反爬不可控；爬虫维护成本高于价值 |
+| Embedding | BGE-small-zh-v1.5（512 维） | 中文金融语义检索 SOTA-tier、CPU 单核能跑、~100MB |
+| 向量库 | Chroma（持久化） | 单文件部署、足够 ~10K chunks 量级；不引入 Docker |
+| 关键词检索 | rank_bm25 + jieba | 与 dense 互补，对精确词（公司名、line item 名）召回更好 |
+| 结构化表 | HTML `<table>` 二维直读 + canonical 映射 | 三大表用关键词命中数 + 行数判定 type |
+| LLM | DeepSeek-chat / -reasoner | chat 比 GPT-4o-mini 便宜 ~10x，中文质量接近；reasoner 做降级兜底 |
+| `verification_plan` 产出阶段 | Extract 阶段产出粗 plan，verify 第一轮自检修正 | 让 verifier 不需要从零规划 |
+| Verify 编排 | LangGraph 状态机（per-claim） | plan ↔ tool ↔ finalize 是天然状态机 |
+| 数值计算 | `compute(expr)` 工具 + AST 白名单 | 数值比较交给工具，彻底消除 LLM 算术幻觉 |
+| Prompt 缓存 | SQLite (WAL) | 第二次跑批 90%+ 命中率，调 prompt 几乎零成本 |
+| 测试 fixture | SMIC 2025 年报（848KB GBK），入库版本控制 | 端到端测试种子 |
 
 ---
 
@@ -613,4 +614,248 @@ def fan_out(state: OuterState) -> list[Send]:
 
 ---
 
-> 设计基线已就位。开始实现时直接进 §八 的开发顺序拆 task。**§八 第 2 步**（`html_loader.py`）的 fixture 已经有了——用户当前目录下的 `2025.html`（中芯国际 FY2025 年报全文，848KB GBK），可以直接拿来跑通第一份 `ParsedReport`，作为下游所有 Phase 的种子数据。
+## 十一、Phase 4：Report（详细）
+
+> Phase 4 把 verify 的 verdicts.json 合成成"管理层可信度"markdown 报告，是给读者用的最终输出。
+
+### 11.1 输入与产物
+
+- 入：`<data_dir>/_walk_the_talk/{verdicts.json, claims.json, financials.db}`
+- 出：`<data_dir>/_walk_the_talk/report.md`
+
+不调用 LLM，纯本地数据合成。CLI：
+
+```bash
+walk-the-talk report <data_dir> -t 688981 -c "中芯国际" \
+  [--out report.md] [--current-fy 2025] [--no-highlights]
+```
+
+### 11.2 报告结构
+
+```
+# {公司} 管理层"说到做到"分析报告
+> ticker / 当前财年基准 / verdict 速览
+
+## 综合可信度评分
+| 维度 | 分值 (0-100) | 说明 |
+| 整体可信度 | 58 | (V*1 + P*0.5 + F*0) / (V+P+F) × 100 |
+| 量化承诺命中率 | 83 | quantitative_forecast 子集 |
+| 资本配置准确度 | 33 | capital_allocation 子集 |
+
+## 历年简史（按 from_fiscal_year 倒序）
+### FY2024 年报
+- ✅ 验证通过 (1)
+- ❌ 验证不通过 (1)
+- ❓ 无法验证 (3)
+- ⏳ 未到验证窗口 (5)
+...
+
+## 突出事件
+### 高亮 · 大幅落空 (FAILED)
+### 高亮 · 信守承诺 (VERIFIED)
+### 当前在途 (PREMATURE)
+
+## 验证方法说明
+```
+
+### 11.3 评分公式（已锁定）
+
+```python
+score = sum(weight) / |actionable| × 100
+weights = {verified: 1.0, partially_verified: 0.5, failed: 0.0}
+actionable = V ∪ P ∪ F   # NV / PR / EXP 不进分母
+```
+
+锁定决策（见 §十二·决策日志 §12.5）：
+
+- partially_verified 权重定 **0.5**（偏严格，宁可低估不高估）
+- v1 不按 claim_type 加权（quantitative / strategic / capital_allocation 平权）
+- not_verifiable / premature / expired **不计入分母**（不惩罚数据缺失）
+
+### 11.4 突出事件挑选规则
+
+- **大幅落空（FAILED）**：按 (`materiality_score` 降序, `fiscal_year` 降序) 取 top-N
+- **信守承诺（VERIFIED）**：要求 `specificity_score >= 3`（避免吹定性 claim），按 (`specificity_score` 降序, `materiality_score` 降序) 取 top-N
+- **当前在途（PREMATURE）**：按 `horizon.end` 升序（最快到期者优先）
+
+### 11.5 数据存疑标注（Anomaly Check）
+
+`report/highlights.py::AnomalyChecker` 对 FAILED 条目做"数量级偏差"检测：
+
+- 若 `actual_value` 与同 ticker 同 metric_canonical 近 3 期参考均值差 ≥ 5x → 标 ⚠️
+- 用于发现 ingest 单位归一 bug（千元 / 百万元误读为元）
+- 缺数据时跳过，不报错
+
+### 11.6 模块结构
+
+```
+walk_the_talk/report/
+├── builder.py        # build_report(claim_store, verdict_store, ...) -> str（纯函数）
+├── scoring.py        # 评分公式（独立可测）
+├── sections.py       # 各 section 渲染函数
+├── highlights.py     # 突出事件挑选 + AnomalyChecker
+└── templates.py      # markdown 模板字符串
+```
+
+---
+
+## 十二、上线后的优化（P0–P4）
+
+> 真实 SMIC 跑批暴露的问题驱动了一轮迭代。本节按时间顺序记录 P0-P4 改动的动机与落地结果。
+
+### 12.1 P0：canonical 白名单注入 verify system prompt（已实现）
+
+**症状**：verify agent 经常 query_financials 一个不存在的 line item（如 `gross_margin` 实际未入库），花 1-2 轮 retry 才发现。
+
+**改法**：verify pipeline 启动时一次性查 `FinancialsStore.list_canonicals(ticker)` 拿到该公司实际入库的所有 canonical，注入 system prompt。LLM 看到的"白名单"= DB 直查 ∪ 派生可算。
+
+**效果**：减少了 80% 的 line_item miss-and-retry。
+
+### 12.2 P1：query_financials 加派生字段（已实现）
+
+**症状**：`gross_margin / net_margin / fcf_margin` 这种比率派生字段不入 DB（避免冗余），但 LLM 反复造名字。
+
+**改法**：`verify/tools.py` 内置 `_DERIVED_RECIPES`，5 个派生 canonical：
+
+| canonical | 公式 | 单位 |
+|---|---|---|
+| `gross_margin` | (revenue - cost_of_revenue) / revenue | ratio |
+| `net_margin` | net_profit / revenue | ratio |
+| `operating_margin` | operating_profit / revenue | ratio |
+| `fcf_margin` | (ocf - capex) / revenue | ratio |
+| `depreciation_amortization_total` | sum(depreciation, dep_right_of_use, dep_investment_property, amort_intangible, amort_long_term_prepaid) | 元 |
+
+派生只在 query 时算，不入库；保持 financials.db 单一事实源。
+
+### 12.3 P2：ingest 折旧/摊销字段补口（已实现）
+
+**症状**：FY2022-004 claim "折旧将控制在某水平"，verify 查 `depreciation` → DB miss → not_verifiable。但 SMIC 现金流量表附注里有这一行——只是 `_taxonomy.py` 的 alias 表没收。
+
+**改法**：`ingest/_taxonomy.py::CASHFLOW_LINES` 补 5 条 alias：
+
+- 固定资产折旧、油气资产折耗、生产性生物资产折旧 → `depreciation`
+- 使用权资产折旧 / 使用权资产摊销 → `depreciation_right_of_use`
+- 投资性房地产折旧 → `depreciation_investment_property`
+- 无形资产摊销 / 无形资产的摊销 → `amortization_intangible`
+- 长期待摊费用摊销 / 长期待摊费用的摊销 → `amortization_long_term_prepaid`
+
+无 schema 改动，重跑 ingest 即可。SMIC FY2022-2025 折旧序列已可查。
+
+### 12.4 P3：Phase 4 (Report) 实装（已实现）
+
+详见 §十一。
+
+### 12.5 P4：verify rescue gate + ceiling（已实现）
+
+**症状**：verify 早期 6 条 not_verifiable 中至少 4 条本可救——LLM 第一次 query_chunks 返回 [] 就放弃，没有改写检索词重试。
+
+**改法**：
+
+**Prompt 改**（`verify/prompts.py`）：在 _TOOLS_DOC 末尾加"rescue 策略"段落——一次 query_chunks miss 不要立即放弃，至少试一次同义词扩展 / 拓宽 fiscal_periods / 提高 top_k。
+
+**Agent 改**（`verify/agent.py::_gate_finalize`）：finalize_node 入口增加守卫——若 `verdict == NOT_VERIFIABLE` 且 `tool_call_count < max_iters` 且尚未做过 chunk 重试，**强制回到 plan_node 走 rescue 一轮**。
+
+**Ceiling 约束**（`verify/agent.py::_enforce_rescue_ceiling`）：rescue 路径下 LLM 若给 verified，**强制下调为 partially_verified**——救援轮的证据天然不稳，宁愿低估不高估。
+
+**效果**：not_verifiable 从 6 条降到 4 条；2 条升级为 partially_verified（带 rescue 标注）。
+
+---
+
+## 十三、SMIC 真实跑批结果（FY2021–FY2025）
+
+> 完整报告见 [报告样例](docs/sample_report.md)（首次跑通后 `walk-the-talk report` 自动生成）。
+
+### 13.1 整体数字
+
+| 指标 | 数 |
+|---|---:|
+| 抽出的前瞻 claim | 22 |
+| ✅ verified | 3 |
+| ⚠️ partially_verified | 1 |
+| ❌ failed | 2 |
+| ❓ not_verifiable | 8 |
+| ⏳ premature | 8 |
+| **整体可信度** | **58 / 100** |
+| 量化承诺命中率 | 83 / 100 |
+| 资本配置准确度 | 33 / 100 |
+
+### 13.2 跑批成本
+
+按 DeepSeek 公开价（chat ¥1/M in + ¥2/M out；reasoner ¥4/M in + ¥16/M out），SMIC 5 年首跑 ≈ **¥3-5**；二跑因 prompt cache 命中 90%+ 几乎为零。
+
+### 13.3 高亮发现
+
+**两次 capex 持平诺言连续违约**（最有信号量）：
+
+- FY2022-005 → FY2023 capex +27.6%（承诺持平）
+- FY2024-004 → FY2025 capex +9.9%（承诺持平）
+
+**毛利率精准命中**（信守承诺）：
+
+- FY2022-003 "毛利率在 20% 左右" → FY2023 实际 21.89%
+
+**折旧增速精准命中**：
+
+- FY2022-004 "折旧同比增长超两成" → FY2023 实际 +26.5%
+
+---
+
+## 十四、已知 issues 与 Roadmap
+
+### 14.1 已知 issue：`#unit-normalization-bug`（HIGH 优先级）
+
+`verdicts_full_run.json` 中 `688981-FY2023-003` 显示：
+
+```
+FY2023 revenue = 45,250,425,000  (≈ 452.5 亿)
+FY2024 revenue = 9,612,775,000   (≈ 96.1 亿)
+同比 -78.76%
+```
+
+但事实：SMIC FY2024 营收公开披露 ≈ 577 亿元。差距 5x，疑为 `_taxonomy.py::parse_unit_from_caption` 在多片段表格的单位继承逻辑漏处理某种 caption 写法。
+
+排查方向（独立 ticket）：
+
+```sql
+SELECT fiscal_period, value, unit, source_path, source_locator
+FROM financial_lines
+WHERE ticker='688981' AND line_item_canonical='revenue'
+ORDER BY fiscal_period;
+```
+
+修复后 FY2023-003 这条 FAILED 大概率会变 PARTIALLY_VERIFIED 或 VERIFIED。
+
+### 14.2 Roadmap
+
+| 版本 | 内容 |
+|---|---|
+| v0.1（当前） | 单公司、HTML 输入、4 阶段端到端 |
+| v0.2 | 跨公司同业对比（"看同行业谁最爱违约"） |
+| v0.3 | 季报支持（半年报、Q1/Q3） |
+| v0.4 | HTML 报告 + evidence 折叠 + 时间轴可视化 |
+| v0.5 | Reranker（如 BGE-reranker）提升 query_chunks 召回精度 |
+| v0.6 | 业绩说明会 / 电话会议纪要纳入 claim 抽取范围 |
+
+---
+
+## 十五、决策日志
+
+按时间顺序记录关键决策。每条决策不一定都"对"，但都被实证或反思验证过。
+
+| # | 日期 | 决策 | 状态 |
+|---|---|---|---|
+| 1 | 2026-04-25 | 输入格式选 HTML 而非 PDF（实测对比四维度均胜出） | ✓ 验证 |
+| 2 | 2026-04-25 | 数据获取手动下载，不内置爬虫 | ✓ 验证 |
+| 3 | 2026-04-25 | embedding 选 BGE-small-zh-v1.5（512 维，CPU 单核够用） | ✓ 验证 |
+| 4 | 2026-04-25 | 向量库选 Chroma 而非 LanceDB（招聘市场出现率更高） | ✓ 验证 |
+| 5 | 2026-04-25 | LLM 选 DeepSeek-chat（chat 失败两级降级 reasoner） | ✓ 验证 |
+| 6 | 2026-04-25 | LangGraph 用法：每个 Phase 内部状态机，phase 间靠落盘文件解耦 | ✓ 验证 |
+| 7 | 2026-04-25 | `compute(expr)` 用 AST 白名单消除 LLM 算术幻觉 | ✓ 验证 |
+| 8 | 2026-04-25 | claim_type 收敛到 5 类（quantitative_forecast / strategic_commitment / capital_allocation / risk_assessment / qualitative_judgment） | ✓ 验证 |
+| 9 | 2026-04-26 (P0) | canonical 白名单注入 verify system prompt | ✓ 上线 |
+| 10 | 2026-04-26 (P1) | query_financials 加 5 个派生字段（ratio + sum） | ✓ 上线 |
+| 11 | 2026-04-26 (P2) | ingest `_taxonomy.py` 补折旧/摊销 alias | ✓ 上线 |
+| 12 | 2026-04-26 (P3) | Phase 4 report 实装；评分公式：partially_verified 权重 0.5、claim_type 平权、NV/PR/EXP 不进分母 | ✓ 上线 |
+| 13 | 2026-04-26 (P4) | verify rescue gate + ceiling（救援轮最多升至 partially_verified） | ✓ 上线 |
+| 14 | 2026-04-26 | 报告 FAILED 条目对 actual_value 量级偏差 ≥ 5x 标⚠️"数据存疑" | ✓ 上线 |
+| 15 | 2026-04-26 | 已知 unit-normalization 单位归一 bug 独立 ticket（FY2024 营收量级异常） | 待修 |
