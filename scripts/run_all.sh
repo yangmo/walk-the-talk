@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # walk-the-talk 一键全流程脚本
-#   ingest → extract → verify
+#   ingest → extract → verify → report
 # 用法:
 #   ./scripts/run_all.sh                                # 用默认值（中芯国际）
 #   ./scripts/run_all.sh --clean                        # 清空 _walk_the_talk/ 全量重跑
@@ -16,10 +16,12 @@
 #   MAX_ITERS      verify per-claim 迭代上限（默认 3）
 #   YEARS          extract/verify 限制年份（逗号分隔；空 = 全部）
 #   CLAIM_IDS      verify 限制 claim_id（逗号分隔；空 = 全部）
-#   CURRENT_FY     verify 当前 FY（空 = 自动从 financials.db 检测）
+#   CURRENT_FY     verify / report 当前 FY（空 = 自动从 financials.db 检测）
+#   REPORT_OUT     report 输出文件名（默认 report.md，落 WORK_DIR/）
 #   SKIP_INGEST    设为 1 跳过 ingest
 #   SKIP_EXTRACT   设为 1 跳过 extract
 #   SKIP_VERIFY    设为 1 跳过 verify
+#   SKIP_REPORT    设为 1 跳过 report
 #   NO_RESUME      设为 1 给 ingest/extract/verify 都加 --no-resume（强制重跑所有 claim）
 #   DEBUG          设为 1 给 extract / verify 加 --debug
 
@@ -35,9 +37,11 @@ MAX_ITERS="${MAX_ITERS:-3}"
 YEARS="${YEARS:-}"
 CLAIM_IDS="${CLAIM_IDS:-}"
 CURRENT_FY="${CURRENT_FY:-}"
+REPORT_OUT="${REPORT_OUT:-report.md}"
 SKIP_INGEST="${SKIP_INGEST:-0}"
 SKIP_EXTRACT="${SKIP_EXTRACT:-0}"
 SKIP_VERIFY="${SKIP_VERIFY:-0}"
+SKIP_REPORT="${SKIP_REPORT:-0}"
 NO_RESUME="${NO_RESUME:-0}"
 DEBUG="${DEBUG:-0}"
 CLEAN=0
@@ -54,10 +58,12 @@ while [[ $# -gt 0 ]]; do
         --years)         YEARS="$2"; shift 2 ;;
         --claim-ids)     CLAIM_IDS="$2"; shift 2 ;;
         --current-fy)    CURRENT_FY="$2"; shift 2 ;;
+        --report-out)    REPORT_OUT="$2"; shift 2 ;;
         --clean)         CLEAN=1; shift ;;
         --skip-ingest)   SKIP_INGEST=1; shift ;;
         --skip-extract)  SKIP_EXTRACT=1; shift ;;
         --skip-verify)   SKIP_VERIFY=1; shift ;;
+        --skip-report)   SKIP_REPORT=1; shift ;;
         --no-resume)     NO_RESUME=1; shift ;;
         --debug)         DEBUG=1; shift ;;
         -h|--help)
@@ -133,9 +139,10 @@ MAX_ITERS    ${MAX_ITERS}    (verify)
 YEARS        ${YEARS:-<all>}
 CLAIM_IDS    ${CLAIM_IDS:-<all>}
 CURRENT_FY   ${CURRENT_FY:-<auto>}
+REPORT_OUT   ${REPORT_OUT}
 CLEAN        ${CLEAN}
 NO_RESUME    ${NO_RESUME}
-SKIP         ingest=${SKIP_INGEST} extract=${SKIP_EXTRACT} verify=${SKIP_VERIFY}
+SKIP         ingest=${SKIP_INGEST} extract=${SKIP_EXTRACT} verify=${SKIP_VERIFY} report=${SKIP_REPORT}
 DEBUG        ${DEBUG}
 EOF
 
@@ -164,7 +171,7 @@ else
         --embedder "${EMBEDDER}"
     )
     [[ "${NO_RESUME}" == "1" ]] && INGEST_ARGS+=(--no-resume)
-    run_phase "PHASE 1/3 · INGEST" walk-the-talk "${INGEST_ARGS[@]}"
+    run_phase "PHASE 1/4 · INGEST" walk-the-talk "${INGEST_ARGS[@]}"
 fi
 
 # ---------- EXTRACT ----------
@@ -180,7 +187,7 @@ else
     [[ -n "${YEARS}" ]] && EXTRACT_ARGS+=(--years "${YEARS}")
     [[ "${NO_RESUME}" == "1" ]] && EXTRACT_ARGS+=(--no-resume)
     [[ "${DEBUG}" == "1" ]] && EXTRACT_ARGS+=(--debug)
-    run_phase "PHASE 2/3 · EXTRACT" walk-the-talk "${EXTRACT_ARGS[@]}"
+    run_phase "PHASE 2/4 · EXTRACT" walk-the-talk "${EXTRACT_ARGS[@]}"
 fi
 
 # ---------- VERIFY ----------
@@ -199,7 +206,21 @@ else
     [[ -n "${EMBEDDER}" ]]   && VERIFY_ARGS+=(--embedder "${EMBEDDER}")
     [[ "${NO_RESUME}" == "1" ]] && VERIFY_ARGS+=(--no-resume)
     [[ "${DEBUG}" == "1" ]]  && VERIFY_ARGS+=(--debug)
-    run_phase "PHASE 3/3 · VERIFY" walk-the-talk "${VERIFY_ARGS[@]}"
+    run_phase "PHASE 3/4 · VERIFY" walk-the-talk "${VERIFY_ARGS[@]}"
+fi
+
+# ---------- REPORT ----------
+if [[ "${SKIP_REPORT}" == "1" ]]; then
+    echo "（跳过 report）"
+else
+    REPORT_ARGS=(
+        report "${DATA_DIR}"
+        --ticker "${TICKER}"
+        --company "${COMPANY}"
+        --out "${REPORT_OUT}"
+    )
+    [[ -n "${CURRENT_FY}" ]] && REPORT_ARGS+=(--current-fy "${CURRENT_FY}")
+    run_phase "PHASE 4/4 · REPORT" walk-the-talk "${REPORT_ARGS[@]}"
 fi
 
 OVERALL_T1="$(date +%s)"
@@ -209,6 +230,9 @@ echo "总耗时 $((OVERALL_T1 - OVERALL_T0))s"
 echo
 echo "产物在 ${WORK_DIR}/"
 echo "  ├─ chunks (Chroma)        : chroma/"
-echo "  ├─ financials.db          : financials.db"
-echo "  ├─ claims                 : claims.json"
-echo "  └─ verdicts               : verdicts.json"
+echo "  ├─ BM25 索引              : bm25.pkl"
+echo "  ├─ 财务库                 : financials.db"
+echo "  ├─ LLM prompt 缓存        : llm_cache.db"
+echo "  ├─ 前瞻断言               : claims.json"
+echo "  ├─ 验证结果               : verdicts.json"
+echo "  └─ 最终报告               : ${REPORT_OUT}"

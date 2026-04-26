@@ -19,6 +19,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 新增 `CONTRIBUTING.md`（开发环境、改动定位表、代码风格、测试约定、commit 与 PR checklist）。
   - 升级 `pyproject.toml`：作者改 Mo Yang、加 `[project.urls]` / keywords / classifiers；`[dev]` extras 加 `pytest-cov` + `pre-commit`；新增 `[tool.pytest.ini_options]` + `[tool.coverage.*]` 配置。
   - README 加 CI / pre-commit 徽章；"开发"小节列 pre-commit + coverage 命令。
+  - README 重排："项目状态与免责声明"提到顶部、"4 阶段流水线"展开成 phase × 输入 × 落盘产物表格、Verify 状态机配 mermaid stateDiagram-v2 图（GitHub 原生渲染）。
+- **R6**：`scripts/run_all.sh` 串通 Phase 4
+  - 新增 PHASE 4/4 · REPORT 步骤；banner 由 `1/3..3/3` 改为 `1/4..4/4`。
+  - 新增 `SKIP_REPORT` env / `--skip-report` flag、`REPORT_OUT` env / `--report-out` flag。
+  - 末尾产物清单补全：BM25 索引、LLM prompt 缓存、最终报告。
 
 ## [0.1.0] – 2026-04-26
 
