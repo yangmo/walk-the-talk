@@ -33,12 +33,41 @@ _VERDICT_DEFS = """# Verdict 五选一（不允许 "premature"，那个由调用
 - not_verifiable   ：claim 模糊到无法用现有数据判断（措辞过软、缺定量目标、或定性范围太大）。
 - expired          ：claim 的窗口已过 (horizon.end ≤ current_fy)，但所需数据 ingest 阶段没拿到。
 
-判定原则：
+# 边界判定规则（消除主观漂移）
+
+## 定量 claim（quantitative_forecast / 含 predicate.value 的 capital_allocation）
+设目标值 T、实际值 A、运算符为 op：
+- op ∈ {{>=, ≥, >}}：
+  - A ≥ T              → verified
+  - 0.85·T ≤ A < T     → partially_verified（达成 ≥85%）
+  - A < 0.85·T         → failed
+- op ∈ {{<=, ≤, <}}：
+  - A ≤ T              → verified
+  - T < A ≤ 1.15·T     → partially_verified（超出 ≤15%）
+  - A > 1.15·T         → failed
+- op ∈ {{=, ≈}}：误差 ≤±10% → verified；±10%~±25% → partially_verified；>±25% → failed
+- op ∈ {{趋势上升 / 下降}}：方向一致 → verified；持平或微反向 (≤2%) → partially_verified；反向 → failed
+
+## 定性 claim（strategic_commitment / qualitative_judgment / risk_assessment / 无 predicate.value）
+按"后续年份原文 + 同向数据"两条线综合判：
+- 后续年报里有 ≥1 条原文证据明确说明该项目落地 / 该方向兑现，且如有相关定量指标也呈同向变化
+  → **verified**
+- 后续年报里有原文持续提及该项目仍在推进 / 行业地位仍在维系，但缺定量印证；
+  或定量指标方向对但幅度不显著
+  → **partially_verified**
+- 仅找到孤立提及、或两轮 query_chunks 变体后仍未找到任何后续印证
+  → **not_verifiable**
+
+# 工具调用原则
+
 1. 优先调用 query_financials 取数；若 line_item_canonical 不在库里，先用工具返回的 hint
    重试一次（如把 capex_yoy 改成 capex 自己除一下）。
-2. 数值比较一律用 compute(expr) 做；不要心算。
-3. 实在缺数才用 query_chunks 找原文佐证（成本高，谨慎）。
-4. confidence ∈ [0, 1]，0.9 以上保留给"工具完整支撑 + 数值精确比对成功"的场景。
+2. 数值比较一律用 compute(expr) 做；不要心算（数值幻觉的常见来源）。
+3. 缺数或纯定性才用 query_chunks 找原文佐证；定性 claim 必须至少跑一次 query_chunks 才能 finalize。
+4. confidence ∈ [0, 1]：
+   - ≥0.9：定量 claim 工具完整支撑 + 数值精确比对成功；
+   - 0.6~0.85：方向正确但口径有 caveat / 仅原文佐证；
+   - <0.5：证据残缺，多半应配合 not_verifiable / partially_verified。
 """
 
 _TOOLS_DOC_TEMPLATE = """# 可用工具
@@ -194,13 +223,25 @@ def build_plan_messages(
 
 # ============== Finalize 节点 ==============
 
-_FINALIZE_SCHEMA = """# 输出 schema（finalize 阶段）
+_FINALIZE_SCHEMA = """# Finalize 前的自检清单（逐条勾选；任一为 NO 都应回退到 not_verifiable）
+
+- [ ] 我**真的**调用了至少 1 个工具（compute / query_financials / query_chunks）并得到非 error 结果？
+- [ ] 如果 claim 是定量类，我是否拿到了 actual_value 并用 compute 做了与 target 的比较？
+- [ ] 如果 claim 是定性类，我是否至少跑过 1 次 query_chunks 找后续年报原文？
+- [ ] 我选择的 verdict 是按上面"边界判定规则"（85% / 15% / ±10% / 方向一致）落格的，而非主观印象？
+
+# 输出 schema（finalize 阶段）
 
 {
   "verdict": "verified" | "partially_verified" | "failed" | "not_verifiable" | "expired",
   "actual_value": <数字 | 字符串 | null>,
   "confidence": <0~1 的小数>,
-  "comment": "≤200 字，说明判定依据；引用 tool 结果时给数字。",
+  "comment": "≤260 字。结构按下列三段式写：
+              (1) 事实摘录——引用工具拿到的数字 / 原文片段；
+              (2) 与目标对比——明确说明 actual vs target 的关系或定性方向；
+              (3) **以「综述：」开头**给出一句话完成情况判断（≤30 字），方便报告 timeline 直接采用，
+                  例如「综述：如期兑现，实际超目标 8%」「综述：方向正确，幅度仅 60%」
+                  「综述：明显落空，缺口 35%」「综述：后续年报无定量印证」。",
   "evidence_chunk_ids": ["chunk_id1", "chunk_id2"]   // 来自 query_chunks 的引用，可空数组
 }
 """

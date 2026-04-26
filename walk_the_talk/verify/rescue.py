@@ -51,7 +51,12 @@ RESCUE_RETRY_MESSAGE = (
     "  - 把检索词换成同义/近义表述（例：「全线紧缺」→「产能紧张 OR 供不应求」）；\n"
     "  - 拓宽 fiscal_periods 或调整 after_fiscal_year，看后续年份的解释；\n"
     "  - 提高 top_k（例：3→5）。\n"
-    "完成新工具调用后再判定。如新证据仍不足，再回到 not_verifiable。"
+    "完成新工具调用后再判定。判断时按「边界判定规则」严格归档：\n"
+    "  - 若新证据足以支撑「方向兑现 + 后续年报原文连续印证」，请直接给 partially_verified；\n"
+    "  - 若同时拿到定量印证（数据呈同向 / 满足比较），可以给 verified——\n"
+    "    系统会按设计自动应用 rescue 上限，把 verified 调整为 partially_verified；\n"
+    "    你不要为了避免被下调而主动收紧到 not_verifiable，那会丢掉真实证据。\n"
+    "  - 仅当两种变体后**仍无任何后续印证**才回到 not_verifiable。"
 )
 
 
