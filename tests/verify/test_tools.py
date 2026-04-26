@@ -644,7 +644,7 @@ def test_sum_optional_components_helper() -> None:
 def test_taxonomy_lookup_da_aliases() -> None:
     """新增的折旧/摊销 alias 都能映射到对应 canonical。"""
     from walk_the_talk.core.enums import StatementType
-    from walk_the_talk.ingest._taxonomy import lookup_canonical
+    from walk_the_talk.ingest.taxonomy import lookup_canonical
 
     # 主用 depreciation
     assert (
@@ -675,7 +675,7 @@ def test_taxonomy_lookup_da_aliases() -> None:
 def test_taxonomy_lookup_da_with_numeral_prefix() -> None:
     """带罗马数字 / 阿拉伯数字前缀 normalize 后仍能命中。"""
     from walk_the_talk.core.enums import StatementType
-    from walk_the_talk.ingest._taxonomy import lookup_canonical
+    from walk_the_talk.ingest.taxonomy import lookup_canonical
 
     # "一、固定资产折旧" → 归一化后 "固定资产折旧"
     assert lookup_canonical("一、固定资产折旧", StatementType.CASHFLOW) == "depreciation"

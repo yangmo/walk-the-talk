@@ -16,7 +16,7 @@ from typing import Any
 import chromadb
 
 from ..core.models import Chunk
-from ._bm25 import BM25Index
+from .bm25_index import BM25Index
 from .embedding import Embedder, make_embedder
 
 # RRF 融合常数（论文经验值，60 是 BM25/MMR 文献常用）

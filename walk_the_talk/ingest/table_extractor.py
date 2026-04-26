@@ -21,7 +21,7 @@ from dataclasses import dataclass
 
 from ..core.enums import StatementType
 from ..core.models import FinancialLine, ParsedReport, Table
-from ._taxonomy import (
+from .taxonomy import (
     UNIT_MULTIPLIER,
     lookup_canonical,
     parse_numeric,

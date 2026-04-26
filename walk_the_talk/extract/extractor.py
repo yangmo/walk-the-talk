@@ -21,9 +21,15 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from ..core.ids import _slug as _slug_text
-from ..core.ids import canonical_key as build_canonical_key
-from ..core.ids import claim_id as build_claim_id
+from ..core.ids import (
+    canonical_key as build_canonical_key,
+)
+from ..core.ids import (
+    claim_id as build_claim_id,
+)
+from ..core.ids import (
+    slug as text_slug,
+)
 from ..core.models import Chunk, Claim, Horizon, Predicate, Subject, VerificationPlan
 from ..llm import LLMClient
 from .prompts import build_messages
@@ -212,7 +218,7 @@ def _materialize_claim(
     # 避免不同 metric 的 claim 共享 "|scope|horizon" 假撞 canonical_key
     metric_text = str(raw.get("metric", "") or "").strip()
     metric_canonical = str(raw.get("metric_canonical", "") or "").strip()
-    canonical_for_key = metric_canonical or _slug_text(metric_text) or "_no_metric_"
+    canonical_for_key = metric_canonical or text_slug(metric_text) or "_no_metric_"
 
     # canonical_key
     subject_canonical = subject.name or subject.scope

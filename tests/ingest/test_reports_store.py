@@ -19,7 +19,7 @@ from walk_the_talk.ingest import (
     load_html,
     make_embedder,
 )
-from walk_the_talk.ingest._bm25 import BM25Index
+from walk_the_talk.ingest.bm25_index import BM25Index
 
 # ============== HashEmbedder ==============
 

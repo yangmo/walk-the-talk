@@ -17,7 +17,7 @@ from bs4 import BeautifulSoup
 
 from ..core.enums import ReportType, SectionCanonical
 from ..core.models import ParsedReport, Section, Table
-from ._table import table_to_2d, table_to_markdown
+from .table_dom import table_to_2d, table_to_markdown
 
 # ============== 常量 ==============
 

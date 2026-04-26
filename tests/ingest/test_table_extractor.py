@@ -15,14 +15,14 @@ from walk_the_talk.ingest import (
     extract_lines_from_table,
     load_html,
 )
-from walk_the_talk.ingest._taxonomy import (
+from walk_the_talk.ingest.taxonomy import (
     lookup_canonical,
     normalize_line_item_text,
     parse_numeric,
     parse_unit_from_caption,
 )
 
-# ============== _taxonomy ==============
+# ============== taxonomy ==============
 
 
 def test_normalize_strips_numerals():

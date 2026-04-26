@@ -24,6 +24,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - 新增 PHASE 4/4 · REPORT 步骤；banner 由 `1/3..3/3` 改为 `1/4..4/4`。
   - 新增 `SKIP_REPORT` env / `--skip-report` flag、`REPORT_OUT` env / `--report-out` flag。
   - 末尾产物清单补全：BM25 索引、LLM prompt 缓存、最终报告。
+- **R2**：Phase 1 (Ingest) 模块重命名 + 收紧公有 API
+  - 三个私有模块改公有命名（`git mv` 保 history）：
+    - `ingest/_taxonomy.py` → `ingest/taxonomy.py`（中文 line item alias + 单位归一）
+    - `ingest/_bm25.py` → `ingest/bm25_index.py`（关键词索引）
+    - `ingest/_table.py` → `ingest/table_dom.py`（DOM-level table helpers）
+  - `core/ids.py`：`_slug` → `slug`（公有命名）；删 `section_seq_id`（零引用死代码）；加 `__all__` 显式 export；docstring 重写并补 Args/Returns。
+  - `walk_the_talk/ingest/__init__.py`：重写 docstring（按 API 主题分组）；`BM25Index` 加进 public API；`__all__` 按字母序排。
+  - 同步改 `extract/extractor.py` 的 import（`_slug as _slug_text` → `slug as text_slug`）；`tests/verify/test_tools.py` 与 `tests/ingest/test_table_extractor.py` 的 import 路径同步更新。
+  - 全仓 ruff check + ruff format 仍零 warning。
 
 ## [0.1.0] – 2026-04-26
 
